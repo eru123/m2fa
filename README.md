@@ -15,7 +15,7 @@ Secrets never touch disk in plaintext:
 - The encryption key is a random 256-bit master key stored in the **OS credential store** (Windows Credential Manager on Windows, Keychain on macOS, Secret Service on Linux) and is only fetched into memory at runtime — this is the vault.
 - SQLite (`m2fa.db` in the app data directory) holds only ciphertext blobs plus non-secret metadata (label, issuer, algorithm, digits, period) and an **HMAC-SHA256 fingerprint keyed with the master key** used for duplicate detection — someone holding the database cannot verify secret guesses offline.
 - Import error messages never echo the offending line or parameter values, so secrets can't leak into logs or screenshots through parse failures.
-- The webview holds only generated codes and metadata; raw secrets never cross the IPC boundary.
+- The webview holds only generated codes and metadata; raw secrets never cross the IPC boundary. The one deliberate exception: **Export** builds `otpauth://` lines and writes them to a file in your Downloads folder entirely in Rust — the plaintext secrets go from the vault straight to disk and still never enter any webview.
 - Content Security Policy is pinned to app-local assets (`default-src 'self'`, with the dev-server websocket allowed for HMR).
 
 ## Import format
