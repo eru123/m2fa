@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api } from "./api";
 import type { AccountMeta, CodeSet } from "./types";
 import { EmptyState } from "./components/EmptyState";
@@ -66,6 +67,19 @@ export default function App() {
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 100);
     return () => window.clearInterval(interval);
+  }, []);
+
+  // Dialog child windows block the main window; re-enable input when they close.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen("dialog-closed", () => {
+      const main = getCurrentWindow();
+      main.setEnabled(true).catch(() => undefined);
+      main.setFocus().catch(() => undefined);
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => unlisten?.();
   }, []);
 
   // Dialog child windows notify us when accounts changed.

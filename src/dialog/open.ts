@@ -1,3 +1,4 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 
 const DIALOG_LABEL = "dialog";
@@ -9,13 +10,17 @@ export interface DialogSpec {
 }
 
 /**
- * Open (or focus) the shared child dialog window. Real OS child window:
- * stays on top of the main window, no HTML overlay involved.
+ * Open (or focus) the shared child dialog window and block the main window
+ * while it is open — this Tauri version has no native `modal` window flag,
+ * so modality is emulated by disabling the main window's input until the
+ * dialog reports itself closed (see close.ts / dialog-closed event).
  */
 export async function openDialog(query: string, spec: DialogSpec): Promise<void> {
+  const main = getCurrentWindow();
   const existing = await WebviewWindow.getByLabel(DIALOG_LABEL);
   if (existing) {
     existing.setFocus().catch(() => undefined);
+    main.setEnabled(false).catch(() => undefined);
     return;
   }
   const dialog = new WebviewWindow(DIALOG_LABEL, {
@@ -29,11 +34,17 @@ export async function openDialog(query: string, spec: DialogSpec): Promise<void>
     skipTaskbar: true,
     center: true,
     parent: "main",
-    // the main window is disabled while a dialog is open (owned-window
-    // modality on windows/linux); must be paired with `parent`
-    modal: true,
+  });
+  dialog.once("tauri://created", () => {
+    main.setEnabled(false).catch(() => undefined);
+    dialog.setFocus().catch(() => undefined);
+  });
+  dialog.once("tauri://destroyed", () => {
+    main.setEnabled(true).catch(() => undefined);
+    main.setFocus().catch(() => undefined);
   });
   dialog.once("tauri://error", (event: { payload: unknown }) => {
     console.error("dialog window failed", event.payload);
+    main.setEnabled(true).catch(() => undefined);
   });
 }

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { emitTo } from "@tauri-apps/api/event";
-import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { api } from "../api";
 import type { ImportSummary } from "../types";
+import { closeDialog } from "./close";
 
 export function ImportDialog() {
   const [text, setText] = useState("");
@@ -12,8 +12,9 @@ export function ImportDialog() {
   const [result, setResult] = useState<ImportSummary | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
-  const win = getCurrentWebviewWindow();
-  const close = () => win.close();
+  const close = () => {
+    closeDialog();
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
