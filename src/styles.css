@@ -416,6 +416,12 @@ textarea {
   font-size: 10px;
 }
 
+.avatar > svg {
+  width: 58%;
+  height: 58%;
+  display: block;
+}
+
 .card-id {
   flex: 1;
   min-width: 0;

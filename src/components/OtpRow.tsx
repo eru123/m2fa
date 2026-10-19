@@ -1,6 +1,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { CodeSet } from "../types";
 import { matchBrand } from "../brands";
+import { BRAND_ICONS } from "../brand-icons";
 import { colorFromString, groupCode } from "../util";
 import { CodeRing } from "./CodeRing";
 
@@ -22,6 +23,7 @@ export function OtpRow({ code, now, copied, algorithm, onCopy, onDelete }: OtpRo
   const initial = (brand?.name ?? (code.issuer !== "" ? code.issuer : code.label))
     .charAt(0)
     .toUpperCase();
+  const iconPath = brand ? BRAND_ICONS[brand.id] : undefined;
   const showBadge = (algorithm !== undefined && algorithm !== "SHA1") || code.period !== 30;
   const badgeText = `${algorithm ?? "SHA1"} · ${code.period}s`;
 
@@ -42,7 +44,13 @@ export function OtpRow({ code, now, copied, algorithm, onCopy, onDelete }: OtpRo
       onKeyDown={handleKey}
     >
       <div className="avatar avatar-sm" style={{ background: color, color: ink }} title={brand?.name}>
-        {initial}
+        {iconPath ? (
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d={iconPath} fill="currentColor" />
+          </svg>
+        ) : (
+          initial
+        )}
       </div>
 
       <div className="row-id">
