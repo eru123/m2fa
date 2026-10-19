@@ -7,6 +7,16 @@ A desktop TOTP authenticator built with Tauri 2, React 19, Vite 8, TypeScript an
 - Card mode and list mode, search, and click-to-copy with animated feedback
 - Countdown ring per account, honouring each account's own period and algorithm
 
+## Screenshots
+
+**Card view**
+
+![2FA Manager card view](docs/screenshots/card-view.png)
+
+**List view**
+
+![2FA Manager list view](docs/screenshots/list-view.png)
+
 ## Security model
 
 Secrets never touch disk in plaintext:
