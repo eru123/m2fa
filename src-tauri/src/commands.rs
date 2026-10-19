@@ -333,4 +333,146 @@ mod tests {
         assert_eq!(parsed.digits, 8);
         assert_eq!(parsed.period, 60);
     }
+
+    /// Demo dataset for screenshots: (issuer, label) pairs across known and
+    /// unknown brands. Padded with generic entries up to 100 accounts.
+    fn demo_accounts() -> Vec<(&'static str, String)> {
+        let brands: &[(&str, &[&str])] = &[
+            ("Google", &["alice@gmail.com", "bob@gmail.com", "carol@gmail.com"]),
+            ("GitHub", &["alice", "bob-dev", "deploy-bot"]),
+            ("Microsoft", &["alice@outlook.com", "dev@corp", "azure-admin"]),
+            ("Amazon Web Services", &["root@acct-1", "iam-admin", "billing@998"]),
+            ("Cloudflare", &["alice@corp.dev", "dns-admin"]),
+            ("Discord", &["alice", "modbot"]),
+            ("Stripe", &["live@shop.dev", "test@shop.dev"]),
+            ("PayPal", &["alice@shop.dev", "business"]),
+            ("Facebook", &["alice", "ads-admin"]),
+            ("Instagram", &["alice.codes", "studio"]),
+            ("Heroku", &["prod-api", "staging"]),
+            ("DigitalOcean", &["droplet-1", "k8s-pool"]),
+            ("Contabo", &["vps-2672274", "backup-node"]),
+            ("Linode", &["node-a"]),
+            ("Vultr", &["edge-1"]),
+            ("Hetzner", &["hx-fsn1"]),
+            ("Namecheap", &["domains"]),
+            ("GoDaddy", &["site-1"]),
+            ("Binance", &["spot", "withdrawals"]),
+            ("Coinbase", &["alice", "pro"]),
+            ("Kraken", &["main"]),
+            ("KuCoin", &["trade-bot"]),
+            ("Xendit", &["alice@shop.ph", "payouts"]),
+            ("PDAX", &["verified"]),
+            ("Proton", &["alice@proton.me", "vpn"]),
+            ("Okta", &["corp-sso"]),
+            ("Auth0", &["tenant-eu"]),
+            ("Zoho", &["alice@corp.in"]),
+            ("Dropbox", &["team"]),
+            ("Slack", &["workspace-1"]),
+            ("Notion", &["design-docs"]),
+            ("Figma", &["design"]),
+            ("Vercel", &["prod"]),
+            ("Docker", &["hub"]),
+            ("npm", &["publish"]),
+            ("OpenAI", &["api-key", "chatgpt"]),
+            ("Anthropic", &["console"]),
+            ("Yahoo", &["alice@mail"]),
+            ("Reddit", &["u-alice"]),
+            ("LinkedIn", &["alice"]),
+            ("Twitch", &["streamer"]),
+            ("Steam", &["gamer"]),
+            ("Apple", &["alice@icloud.com", "dev"]),
+            ("Telegram", &["bot-admin"]),
+            ("X", &["alice"]),
+            ("eu.org", &["JA-1014-FREE"]),
+            ("PayShield", &["jericho", "uat"]),
+            ("SKIDD PH", &["admin"]),
+            ("Netflix", &["family"]),
+            ("InterServer", &["vps-main"]),
+            ("interseptx.com", &["support"]),
+            ("Very Long Company Name Industries Inc", &["primary.admin@longname.example"]),
+            ("My Personal Server", &["root@homeserver"]),
+        ];
+        let mut out: Vec<(&'static str, String)> = Vec::new();
+        for (issuer, labels) in brands {
+            for label in *labels {
+                out.push((issuer, (*label).to_string()));
+            }
+        }
+        debug_assert!(out.len() <= 100, "keep the demo list under 100");
+        let mut i = 1;
+        while out.len() < 100 {
+            out.push(("Demo Service", format!("user-{i}")));
+            i += 1;
+        }
+        out
+    }
+
+    /// Wipes every account in the real app database and seeds 100 dummy
+    /// accounts (random fake secrets) for screenshots. DESTROYS REAL DATA.
+    /// Gated twice: `cargo test reset_and_seed_demo_accounts -- --ignored`
+    /// plus the M2FA_SEED_CONFIRM=1 environment variable.
+    #[test]
+    #[ignore]
+    fn reset_and_seed_demo_accounts() {
+        use rand::RngCore;
+
+        if std::env::var("M2FA_SEED_CONFIRM").unwrap_or_default() != "1" {
+            panic!("this wipes the real database; set M2FA_SEED_CONFIRM=1 to run it");
+        }
+        let appdata = std::env::var("APPDATA").expect("APPDATA set");
+        let db_path = std::path::Path::new(&appdata)
+            .join("com.jericho.m2fa")
+            .join("m2fa.db");
+        assert!(
+            db_path.exists(),
+            "app database not found at {}",
+            db_path.display()
+        );
+
+        let conn = crate::store::open(&db_path).expect("open app database");
+        conn.execute("DELETE FROM accounts", [])
+            .expect("wipe accounts");
+        let vault = crate::vault::Vault::open().expect("open vault");
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as i64;
+        let mut rng = rand::rng();
+        for (idx, (issuer, label)) in demo_accounts().into_iter().enumerate() {
+            let mut secret = [0u8; 20];
+            rng.fill_bytes(&mut secret);
+            let mut id_bytes = [0u8; 16];
+            rng.fill_bytes(&mut id_bytes);
+            let id = HEXLOWER.encode(&id_bytes);
+            let fingerprint = vault.fingerprint(&secret);
+            let secret_enc = vault
+                .seal(&secret, id.as_bytes())
+                .expect("seal demo secret");
+            // sprinkle a few 8-digit / 60-second / SHA256 entries for variety
+            let (digits, period, algorithm) = if idx % 13 == 5 {
+                (8, 60, crate::otp::Algo::Sha256)
+            } else {
+                (6, 30, crate::otp::Algo::Sha1)
+            };
+            crate::store::insert_account(
+                &conn,
+                &id,
+                &label,
+                issuer,
+                algorithm,
+                digits,
+                period,
+                &secret_enc,
+                &fingerprint,
+                now,
+            )
+            .expect("insert demo account");
+        }
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM accounts", [], |r| r.get(0))
+            .expect("count");
+        println!("seeded {count} dummy accounts into {}", db_path.display());
+        assert_eq!(count, 100);
+    }
 }
