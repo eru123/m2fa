@@ -95,9 +95,9 @@ function inRoundRect(px, py, x0, y0, x1, y1, r) {
 
 // ---------- palette ----------
 const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-const BG_TOP = hex("#151d2c"), BG_BOT = hex("#0a0e14");
-const SHIELD_A = hex("#6366f1"), SHIELD_B = hex("#22d3ee");
-const LOCK = hex("#0b101a");
+const BG = hex("#0f1520");
+const SHIELD = hex("#2563eb");
+const LOCK = hex("#ffffff");
 const BORDER = hex("#2a3547");
 const lerp = (a, b, t) => a + (b - a) * t;
 const mix = (c1, c2, t) => [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
@@ -111,9 +111,8 @@ const shield = flatten([
   ["C", 7.4, 20.4, 4, 16, 4, 11],
   ["L", 4, 5.2],
 ]).map(T);
-// shield gradient projected onto its own diagonal (24-space corners)
+// shield bounding box (24-space corners) for a cheap early-out test
 const GA = [4 * S + OX, 2.2 * S + OY], GB = [20 * S + OX, 22 * S + OY];
-const GLEN2 = (GB[0] - GA[0]) ** 2 + (GB[1] - GA[1]) ** 2;
 
 // padlock, same 24-space transform
 const LOCK_CX = 12 * S + OX, LOCK_CY = 11.9 * S + OY;
@@ -132,16 +131,14 @@ for (let y = 0; y < SIZE; y++) {
         const px = x + (sx + 0.5) * SSF, py = y + (sy + 0.5) * SSF;
         const bgSd = sdRoundRect(px, py, 512, 512, 511, 511, 188);
         if (bgSd > 0) continue; // transparent corner
-        // dark slate background, diagonal gradient
-        const bt = Math.min(1, Math.max(0, (px + py) / (2 * SIZE)));
-        let col = mix(BG_TOP, BG_BOT, bt);
+        // solid dark slate background
+        let col = BG;
         // hairline border band for definition on dark desktops
         if (bgSd > -8) col = mix(col, BORDER, 0.55);
-        // shield with gradient
+        // solid blue shield
         const inShieldX = px > GA[0] - 4 && px < GB[0] + 4 && py > GA[1] - 4 && py < GB[1] + 4;
         if (inShieldX && inPoly(px, py, shield)) {
-          const t = Math.min(1, Math.max(0, ((px - GA[0]) * (GB[0] - GA[0]) + (py - GA[1]) * (GB[1] - GA[1])) / GLEN2));
-          col = mix(SHIELD_A, SHIELD_B, t);
+          col = SHIELD;
         }
         // padlock cut in background dark
         const dxc = px - LOCK_CX, dyc = py - LOCK_CY;
