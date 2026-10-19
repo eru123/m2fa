@@ -2,18 +2,11 @@ import { emitTo } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 
 /**
- * Close the dialog child window from inside it, notifying the main window
- * first so it can re-enable its input (emulated modality).
+ * Close the dialog child window from inside it. The main window is notified
+ * fire-and-forget and the close is issued in parallel — nothing here may
+ * await IPC on the (input-disabled) main window, or the close could hang.
  */
-export async function closeDialog(): Promise<void> {
-  try {
-    await emitTo("main", "dialog-closed");
-  } catch {
-    /* main window already gone */
-  }
-  try {
-    await getCurrentWebviewWindow().close();
-  } catch {
-    /* already closing */
-  }
+export function closeDialog(): void {
+  emitTo("main", "dialog-closed").catch(() => undefined);
+  getCurrentWebviewWindow().close().catch(() => undefined);
 }

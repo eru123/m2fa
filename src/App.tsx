@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api } from "./api";
 import type { AccountMeta, CodeSet } from "./types";
 import { EmptyState } from "./components/EmptyState";
 import { OtpCard } from "./components/OtpCard";
 import { OtpRow } from "./components/OtpRow";
-import { openDialog } from "./dialog/open";
+import { openDialog, releaseMainWindow } from "./dialog/open";
 
 type ViewMode = "card" | "list";
 type Theme = "dark" | "light";
@@ -69,14 +68,11 @@ export default function App() {
     return () => window.clearInterval(interval);
   }, []);
 
-  // Dialog child windows block the main window; re-enable input when they close.
+  // Dialog child windows block the main window; the event is the fast path,
+  // the watchdog in open.ts is the guarantee.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
-    listen("dialog-closed", () => {
-      const main = getCurrentWindow();
-      main.setEnabled(true).catch(() => undefined);
-      main.setFocus().catch(() => undefined);
-    }).then((fn) => {
+    listen("dialog-closed", releaseMainWindow).then((fn) => {
       unlisten = fn;
     });
     return () => unlisten?.();
