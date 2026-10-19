@@ -79,6 +79,7 @@ Don't distribute debug builds — they are slower and larger.
    | NSIS installer | `bundle/nsis/2FA Manager_<version>_x64-setup.exe` |
    | MSI installer | `bundle/msi/2FA Manager_<version>_x64_en-US.msi` |
    | Portable binary | `m2fa.exe` |
+   | Debian package (Linux) | `bundle/deb/*_<version>_amd64.deb` |
 
    The first run downloads WiX and NSIS automatically. Build only one format with `--bundles nsis` (or `msi`).
 4. Publish a GitHub release (repo is private — only collaborators can download):
@@ -92,8 +93,8 @@ Don't distribute debug builds — they are slower and larger.
 
 ### Publishing via CI
 
-- **`.github/workflows/release.yml`** — push a tag `v*` and GitHub Actions builds the Windows installers on a `windows-latest` runner and attaches them to a GitHub release. No secrets needed (it uses the built-in `GITHUB_TOKEN`).
-- **`.github/workflows/ci.yml`** — every push to `main` and every PR runs `cargo test` + `pnpm build`.
+- **`.github/workflows/release.yml`** — push a tag `v*` and GitHub Actions builds the Windows installers on a `windows-latest` runner plus the Debian package on an `ubuntu-22.04` runner, and attaches them all to a GitHub release. The `.deb` is built against glibc 2.35, so it installs on Debian 12+ and Ubuntu 22.04+. No secrets needed (it uses the built-in `GITHUB_TOKEN`).
+- **`.github/workflows/ci.yml`** — every push to `main` and every PR runs `cargo test` + `pnpm build` on both Windows and Linux.
 
 ### Code signing
 
@@ -117,4 +118,4 @@ pnpm tauri icon app-icon.png  # regenerates src-tauri/icons/*
 ## Notes
 
 - HOTP (counter-based) URIs are rejected on import with a per-line error; only TOTP is supported.
-- `keyring` uses the `windows-native` backend on Windows; macOS/Linux builds need the matching platform feature in `src-tauri/Cargo.toml`.
+- The vault's `keyring` backend is platform-scoped in `src-tauri/Cargo.toml`: Windows Credential Manager (`windows-native`) and Linux Secret Service (`sync-secret-service`; needs gnome-keyring or KWallet at runtime). macOS needs `apple-native` added.
