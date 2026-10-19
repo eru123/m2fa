@@ -28,13 +28,13 @@ export function CodeRing({ period, now, size = 32 }: CodeRingProps) {
       role="img"
       aria-label={`${seconds} seconds remaining`}
     >
-      <circle cx={c} cy={c} r={r} fill="none" stroke="#2a3340" strokeWidth={stroke} />
+      <circle className="ring-track" cx={c} cy={c} r={r} fill="none" strokeWidth={stroke} />
       <circle
+        className={urgent ? "ring-prog urgent" : "ring-prog"}
         cx={c}
         cy={c}
         r={r}
         fill="none"
-        stroke={urgent ? "#f59e0b" : "#6366f1"}
         strokeWidth={stroke}
         strokeLinecap="round"
         strokeDasharray={circumference}
@@ -42,12 +42,11 @@ export function CodeRing({ period, now, size = 32 }: CodeRingProps) {
         transform={`rotate(-90 ${c} ${c})`}
       />
       <text
-        className="ring-num"
+        className={urgent ? "ring-num urgent" : "ring-num"}
         x={c}
         y={c}
         textAnchor="middle"
         dominantBaseline="central"
-        fill={urgent ? "#f59e0b" : "#8b94a3"}
         fontSize={size >= 28 ? 10 : 9}
       >
         {seconds}

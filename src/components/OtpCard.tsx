@@ -106,7 +106,6 @@ export function OtpCard({ code, now, copied, algorithm, onCopy, onDelete }: OtpC
               width="28"
               height="28"
               fill="none"
-              stroke="#34d399"
               strokeWidth="3"
               strokeLinecap="round"
               strokeLinejoin="round"

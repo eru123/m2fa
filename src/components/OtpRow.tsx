@@ -104,7 +104,6 @@ export function OtpRow({ code, now, copied, algorithm, onCopy, onDelete }: OtpRo
               width="24"
               height="24"
               fill="none"
-              stroke="#34d399"
               strokeWidth="3"
               strokeLinecap="round"
               strokeLinejoin="round"

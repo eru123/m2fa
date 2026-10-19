@@ -1,5 +1,5 @@
 const AVATAR_COLORS = [
-  "#6366f1",
+  "#3b82f6",
   "#0ea5e9",
   "#10b981",
   "#f59e0b",
