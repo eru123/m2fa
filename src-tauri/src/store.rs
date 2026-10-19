@@ -9,7 +9,6 @@ pub struct AccountRow {
     pub digits: u32,
     pub period: u32,
     pub secret_enc: Vec<u8>,
-    pub secret_hash: String,
     pub created_at: i64,
 }
 
@@ -49,13 +48,11 @@ fn row_to_account(row: &rusqlite::Row) -> rusqlite::Result<AccountRow> {
         digits: row.get(4)?,
         period: row.get(5)?,
         secret_enc: row.get(6)?,
-        secret_hash: row.get(7)?,
-        created_at: row.get(8)?,
+        created_at: row.get(7)?,
     })
 }
 
-const COLS: &str =
-    "id, label, issuer, algorithm, digits, period, secret_enc, secret_hash, created_at";
+const COLS: &str = "id, label, issuer, algorithm, digits, period, secret_enc, created_at";
 
 pub fn insert_account(
     conn: &Connection,
