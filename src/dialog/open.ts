@@ -29,6 +29,9 @@ export async function openDialog(query: string, spec: DialogSpec): Promise<void>
     skipTaskbar: true,
     center: true,
     parent: "main",
+    // the main window is disabled while a dialog is open (owned-window
+    // modality on windows/linux); must be paired with `parent`
+    modal: true,
   });
   dialog.once("tauri://error", (event: { payload: unknown }) => {
     console.error("dialog window failed", event.payload);
