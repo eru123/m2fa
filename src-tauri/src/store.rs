@@ -40,13 +40,17 @@ fn algo_from_str(s: &str) -> Algo {
 
 fn row_to_account(row: &rusqlite::Row) -> rusqlite::Result<AccountRow> {
     let algo_str: String = row.get(3)?;
+    // Values come from the local DB; clamp defensively so a tampered row can
+    // never reach the code generator with out-of-range numbers.
+    let digits: i64 = row.get(4)?;
+    let period: i64 = row.get(5)?;
     Ok(AccountRow {
         id: row.get(0)?,
         label: row.get(1)?,
         issuer: row.get(2)?,
         algorithm: algo_from_str(&algo_str),
-        digits: row.get(4)?,
-        period: row.get(5)?,
+        digits: if (1..=9).contains(&digits) { digits as u32 } else { 6 },
+        period: if (1..=86_400).contains(&period) { period as u32 } else { 30 },
         secret_enc: row.get(6)?,
         created_at: row.get(7)?,
     })

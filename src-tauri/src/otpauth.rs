@@ -112,7 +112,7 @@ pub fn parse_otpauth_uri(line: &str) -> Result<AccountInput, String> {
         return Err("HOTP (counter-based) URIs are not supported".into());
     }
     if kind != "totp" {
-        return Err(format!("unsupported otpauth type '{kind}'").into());
+        return Err("unsupported otpauth type".into());
     }
 
     let (path, query) = match tail.split_once('?') {
@@ -132,21 +132,15 @@ pub fn parse_otpauth_uri(line: &str) -> Result<AccountInput, String> {
     let secret = decode_base32_secret(&get("secret").ok_or("missing secret parameter")?)?;
 
     let digits: u32 = match get("digits") {
-        Some(d) => d
-            .trim()
-            .parse()
-            .map_err(|_| format!("invalid digits value '{}'", d))?,
+        Some(d) => d.trim().parse().map_err(|_| "invalid digits value".to_string())?,
         None => 6,
     };
-    if !(1..=10).contains(&digits) {
-        return Err(format!("digits must be between 1 and 10, got {digits}"));
+    if !(1..=9).contains(&digits) {
+        return Err(format!("digits must be between 1 and 9, got {digits}"));
     }
 
     let period: u32 = match get("period") {
-        Some(p) => p
-            .trim()
-            .parse()
-            .map_err(|_| format!("invalid period value '{p}'"))?,
+        Some(p) => p.trim().parse().map_err(|_| "invalid period value".to_string())?,
         None => 30,
     };
     if period == 0 || period > 86_400 {
@@ -154,7 +148,7 @@ pub fn parse_otpauth_uri(line: &str) -> Result<AccountInput, String> {
     }
 
     let algorithm = match get("algorithm") {
-        Some(a) => Algo::parse(&a).ok_or(format!("unsupported algorithm '{a}'"))?,
+        Some(a) => Algo::parse(&a).ok_or("unsupported algorithm".to_string())?,
         None => Algo::Sha1,
     };
 
@@ -212,20 +206,20 @@ mod tests {
     #[test]
     fn raw_spaces_and_colon_in_label() {
         let a = parse_otpauth_uri(
-            "otpauth://totp/Amazon Web Services:2fas@998?secret=JBSWY3DPEHPK3PXQ&issuer=Amazon%20Web%20Services",
+            "otpauth://totp/Amazon Web Services:root@998?secret=JBSWY3DPEHPK3PXQ&issuer=Amazon%20Web%20Services",
         )
         .unwrap();
-        assert_eq!(a.label, "2fas@998");
+        assert_eq!(a.label, "root@998");
         assert_eq!(a.issuer, "Amazon Web Services");
     }
 
     #[test]
     fn encoded_colon_in_label() {
         let a = parse_otpauth_uri(
-            "otpauth://totp/Google%3Abob.psuq%40gmail.com?secret=JBSWY3DPEHPK3PXS&issuer=Google",
+            "otpauth://totp/Google%3Abob.example%40gmail.com?secret=JBSWY3DPEHPK3PXS&issuer=Google",
         )
         .unwrap();
-        assert_eq!(a.label, "bob.psuq@gmail.com");
+        assert_eq!(a.label, "bob.example@gmail.com");
         assert_eq!(a.issuer, "Google");
     }
 
@@ -244,9 +238,9 @@ mod tests {
 
     #[test]
     fn issuer_from_label_when_query_missing() {
-        let a = parse_otpauth_uri("otpauth://totp/Username:lighty?secret=JBSWY3DPEHPK3PXU")
+        let a = parse_otpauth_uri("otpauth://totp/Username:dana?secret=JBSWY3DPEHPK3PXU")
             .unwrap();
-        assert_eq!(a.label, "lighty");
+        assert_eq!(a.label, "dana");
         assert_eq!(a.issuer, "Username");
     }
 
@@ -259,6 +253,26 @@ mod tests {
         assert!(parse_otpauth_uri("otpauth://totp/X?secret=!!!").is_err()); // bad base32
         assert!(parse_otpauth_uri("otpauth://totp/X?secret=JBSWY3DPEHPK3PXP&algorithm=MD5").is_err());
         assert!(parse_otpauth_uri("otpauth://totp/X?secret=JBSWY3DPEHPK3PXP&digits=99").is_err());
+        // 10 digits would overflow the u32 modulus (10^10 > u32::MAX)
+        assert!(parse_otpauth_uri("otpauth://totp/X?secret=JBSWY3DPEHPK3PXP&digits=10").is_err());
+    }
+
+    #[test]
+    fn errors_never_echo_the_secret() {
+        // the type segment swallows everything before the first '/', which can
+        // include the query — the error must still not repeat any of it
+        let err = parse_otpauth_uri("otpauth://totp?secret=JBSWY3DPEHPK3PXP/x").unwrap_err();
+        assert!(!err.to_lowercase().contains("jbswy"), "leaked in: {err}");
+
+        let err =
+            parse_otpauth_uri("otpauth://totp/X?secret=JBSWY3DPEHPK3PXP&algorithm=SUPERHASH")
+                .unwrap_err();
+        assert!(!err.to_lowercase().contains("jbswy"), "leaked in: {err}");
+        assert!(!err.to_lowercase().contains("superhash"), "leaked in: {err}");
+
+        let err =
+            parse_otpauth_uri("otpauth://totp/X?secret=JBSWY3DPEHPK3PXP&digits=abc").unwrap_err();
+        assert!(!err.to_lowercase().contains("jbswy"), "leaked in: {err}");
     }
 
     fn parse_otpath_hotp() -> Result<AccountInput, String> {

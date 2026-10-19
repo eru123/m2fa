@@ -1,7 +1,6 @@
 use crate::{otp, otpauth, state::App, store};
 use data_encoding::HEXLOWER;
 use rand::RngCore;
-use sha2::{Digest, Sha256};
 use tauri::State;
 
 #[derive(serde::Serialize)]
@@ -42,12 +41,6 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-/// SHA-256 fingerprint of the raw secret, used for duplicate detection
-/// without ever storing the secret itself.
-fn secret_fingerprint(secret: &[u8]) -> String {
-    HEXLOWER.encode(Sha256::digest(secret).as_slice())
-}
-
 #[tauri::command]
 pub fn list_accounts(app: State<App>) -> Result<Vec<AccountMeta>, String> {
     let conn = app.db.lock().map_err(|_| "database lock poisoned")?;
@@ -73,7 +66,12 @@ pub fn get_codes(app: State<App>) -> Result<Vec<CodeSet>, String> {
     let now = now_ms();
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
-        let secret = app.vault.unseal(&row.secret_enc)?;
+        // Skip unreadable rows instead of failing the whole board; a swapped
+        // or corrupted ciphertext only loses its own account.
+        let secret = match app.vault.unseal(&row.secret_enc, row.id.as_bytes()) {
+            Ok(secret) => secret,
+            Err(_) => continue,
+        };
         let window = otp::totp_window(&secret, now, row.period, row.algorithm, row.digits);
         let period_ms = row.period as u64 * 1000;
         let remaining_ms = period_ms - now % period_ms;
@@ -107,15 +105,15 @@ pub fn import_lines(app: State<App>, content: String) -> Result<ImportSummary, S
         }
         match otpauth::parse_otpauth_uri(line) {
             Ok(input) => {
-                let fingerprint = secret_fingerprint(&input.secret);
+                let fingerprint = app.vault.fingerprint(&input.secret);
                 if store::account_exists(&conn, &fingerprint, &input.label, &input.issuer)? {
                     summary.duplicated += 1;
                     continue;
                 }
-                let secret_enc = app.vault.seal(&input.secret)?;
                 let mut id_bytes = [0u8; 16];
                 rand::rng().fill_bytes(&mut id_bytes);
                 let id = HEXLOWER.encode(&id_bytes);
+                let secret_enc = app.vault.seal(&input.secret, id.as_bytes())?;
                 store::insert_account(
                     &conn,
                     &id,

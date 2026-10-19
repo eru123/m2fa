@@ -11,10 +11,12 @@ A desktop TOTP authenticator built with Tauri 2, React 19, Vite 8, TypeScript an
 
 Secrets never touch disk in plaintext:
 
-- Each secret is encrypted with **AES-256-GCM** (random 96-bit nonce per write) before it is written to SQLite.
+- Each secret is encrypted with **AES-256-GCM** (random 96-bit nonce per write) before it is written to SQLite, and the ciphertext is cryptographically bound to its account id via AES-GCM associated data — blobs cannot be swapped between rows.
 - The encryption key is a random 256-bit master key stored in the **OS credential store** (Windows Credential Manager on Windows, Keychain on macOS, Secret Service on Linux) and is only fetched into memory at runtime — this is the vault.
-- SQLite (`m2fa.db` in the app data directory) holds only ciphertext blobs plus non-secret metadata (label, issuer, algorithm, digits, period) and a SHA-256 fingerprint of the secret used for duplicate detection.
-- Import error messages never echo the offending line, so secrets can't leak into logs through parse failures.
+- SQLite (`m2fa.db` in the app data directory) holds only ciphertext blobs plus non-secret metadata (label, issuer, algorithm, digits, period) and an **HMAC-SHA256 fingerprint keyed with the master key** used for duplicate detection — someone holding the database cannot verify secret guesses offline.
+- Import error messages never echo the offending line or parameter values, so secrets can't leak into logs or screenshots through parse failures.
+- The webview holds only generated codes and metadata; raw secrets never cross the IPC boundary.
+- Content Security Policy is pinned to app-local assets (`default-src 'self'`, with the dev-server websocket allowed for HMR).
 
 ## Import format
 

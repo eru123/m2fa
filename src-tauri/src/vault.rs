@@ -1,8 +1,10 @@
 use aes_gcm::{
-    aead::{Aead, KeyInit},
+    aead::{Aead, KeyInit, Payload},
     Aes256Gcm, Nonce,
 };
+use hmac::{Hmac, Mac};
 use rand::RngCore;
+use sha2::Sha256;
 
 const KEYRING_SERVICE: &str = "m2fa";
 const KEYRING_USER: &str = "vault-master-key";
@@ -15,6 +17,7 @@ const KEY_LEN: usize = 32;
 /// ciphertext blobs.
 pub struct Vault {
     cipher: Aes256Gcm,
+    mac_key: [u8; KEY_LEN],
 }
 
 impl Vault {
@@ -39,17 +42,36 @@ impl Vault {
         if key.len() != KEY_LEN {
             return Err("stored vault key has wrong length".into());
         }
+        let mut mac_key = [0u8; KEY_LEN];
+        mac_key.copy_from_slice(&key);
         let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| format!("init cipher: {e}"))?;
-        Ok(Vault { cipher })
+        Ok(Vault { cipher, mac_key })
     }
 
-    /// Encrypt plaintext as `[12-byte nonce || ciphertext+tag]`.
-    pub fn seal(&self, plaintext: &[u8]) -> Result<Vec<u8>, String> {
+    /// Deterministic, key-bound fingerprint of a secret, used for duplicate
+    /// detection. HMAC rather than plain SHA-256 so someone holding the
+    /// database cannot verify secret guesses offline.
+    pub fn fingerprint(&self, secret: &[u8]) -> String {
+        let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(&self.mac_key)
+            .expect("hmac accepts any key length");
+        mac.update(secret);
+        data_encoding::HEXLOWER.encode(mac.finalize().into_bytes().as_slice())
+    }
+
+    /// Encrypt plaintext as `[12-byte nonce || ciphertext+tag]`, bound to
+    /// `aad` (the account id) so ciphertexts cannot be swapped between rows.
+    pub fn seal(&self, plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>, String> {
         let mut nonce_bytes = [0u8; NONCE_LEN];
         rand::rng().fill_bytes(&mut nonce_bytes);
         let ciphertext = self
             .cipher
-            .encrypt(Nonce::from_slice(&nonce_bytes), plaintext)
+            .encrypt(
+                Nonce::from_slice(&nonce_bytes),
+                Payload {
+                    msg: plaintext,
+                    aad,
+                },
+            )
             .map_err(|e| format!("encrypt secret: {e}"))?;
         let mut out = Vec::with_capacity(NONCE_LEN + ciphertext.len());
         out.extend_from_slice(&nonce_bytes);
@@ -57,14 +79,20 @@ impl Vault {
         Ok(out)
     }
 
-    /// Decrypt a blob produced by [`Vault::seal`].
-    pub fn unseal(&self, blob: &[u8]) -> Result<Vec<u8>, String> {
+    /// Decrypt a blob produced by [`Vault::seal`] with the same `aad`.
+    pub fn unseal(&self, blob: &[u8], aad: &[u8]) -> Result<Vec<u8>, String> {
         if blob.len() <= NONCE_LEN {
             return Err("encrypted secret is truncated".into());
         }
         let (nonce_bytes, ciphertext) = blob.split_at(NONCE_LEN);
         self.cipher
-            .decrypt(Nonce::from_slice(nonce_bytes), ciphertext)
+            .decrypt(
+                Nonce::from_slice(nonce_bytes),
+                Payload {
+                    msg: ciphertext,
+                    aad,
+                },
+            )
             .map_err(|e| format!("decrypt secret: {e}"))
     }
 }
@@ -77,17 +105,34 @@ mod tests {
     fn seal_unseal_roundtrip() {
         let vault = Vault::open().expect("vault opens");
         let secret = b"the quick brown fox jumps over the lazy dog";
-        let blob = vault.seal(secret).expect("seal");
+        let blob = vault.seal(secret, b"account-1").expect("seal");
         assert_ne!(&blob[..], &secret[..]);
-        let back = vault.unseal(&blob).expect("unseal");
+        let back = vault.unseal(&blob, b"account-1").expect("unseal");
         assert_eq!(back, secret);
+    }
+
+    #[test]
+    fn wrong_aad_is_rejected() {
+        let vault = Vault::open().expect("vault opens");
+        let blob = vault.seal(b"top secret", b"account-1").expect("seal");
+        assert!(vault.unseal(&blob, b"account-2").is_err());
+    }
+
+    #[test]
+    fn fingerprint_is_keyed_and_stable() {
+        let vault = Vault::open().expect("vault opens");
+        assert_eq!(vault.fingerprint(b"same"), vault.fingerprint(b"same"));
+        // keyed fingerprint must not equal the plain sha256 of the secret
+        use sha2::Digest;
+        let plain = data_encoding::HEXLOWER.encode(Sha256::digest(b"same").as_slice());
+        assert_ne!(vault.fingerprint(b"same"), plain);
     }
 
     #[test]
     fn seal_is_non_deterministic() {
         let vault = Vault::open().expect("vault opens");
-        let a = vault.seal(b"same input").expect("seal a");
-        let b = vault.seal(b"same input").expect("seal b");
+        let a = vault.seal(b"same input", b"aad").expect("seal a");
+        let b = vault.seal(b"same input", b"aad").expect("seal b");
         assert_ne!(a, b, "fresh random nonce must change the ciphertext");
     }
 }
