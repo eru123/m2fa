@@ -114,6 +114,31 @@ pub fn delete_account(conn: &Connection, id: &str) -> Result<bool, String> {
         .map_err(|e| format!("delete account: {e}"))
 }
 
+pub fn delete_accounts(conn: &Connection, ids: &[String]) -> Result<u32, String> {
+    if ids.is_empty() {
+        return Ok(0);
+    }
+    let mut stmt = conn
+        .prepare("DELETE FROM accounts WHERE id = ?1")
+        .map_err(|e| format!("prepare delete: {e}"))?;
+    let mut removed = 0;
+    for id in ids {
+        removed += stmt
+            .execute(params![id])
+            .map_err(|e| format!("delete account: {e}"))? as u32;
+    }
+    Ok(removed)
+}
+
+pub fn update_account(conn: &Connection, id: &str, label: &str, issuer: &str) -> Result<bool, String> {
+    conn.execute(
+        "UPDATE accounts SET label = ?2, issuer = ?3 WHERE id = ?1",
+        params![id, label, issuer],
+    )
+    .map(|n| n > 0)
+    .map_err(|e| format!("update account: {e}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -145,5 +170,27 @@ mod tests {
         assert!(delete_account(&conn, "a1").unwrap());
         assert!(!delete_account(&conn, "a1").unwrap());
         assert_eq!(list_accounts(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn update_and_bulk_delete() {
+        let conn = mem_db();
+        insert_account(&conn, "a1", "alice", "Example", Algo::Sha1, 6, 30, b"enc1", "h1", 1)
+            .unwrap();
+        insert_account(&conn, "a2", "bob", "Acme", Algo::Sha1, 6, 30, b"enc2", "h2", 2)
+            .unwrap();
+
+        assert!(update_account(&conn, "a1", "alice2", "Example Inc").unwrap());
+        assert!(!update_account(&conn, "missing", "x", "y").unwrap());
+        let all = list_accounts(&conn).unwrap();
+        assert_eq!(all[1].label, "alice2");
+        assert_eq!(all[1].issuer, "Example Inc");
+
+        assert_eq!(
+            delete_accounts(&conn, &["a1".into(), "a2".into(), "nope".into()]).unwrap(),
+            2
+        );
+        assert_eq!(delete_accounts(&conn, &[]).unwrap(), 0);
+        assert!(list_accounts(&conn).unwrap().is_empty());
     }
 }

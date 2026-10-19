@@ -12,11 +12,24 @@ interface OtpRowProps {
   copied: boolean;
   /** Algorithm from account metadata, when loaded (used for the algorithm badge). */
   algorithm?: string;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
   onCopy: (code: string, id: string) => void;
   onDelete: (id: string, label: string) => void;
 }
 
-export function OtpRow({ code, now, copied, algorithm, onCopy, onDelete }: OtpRowProps) {
+export function OtpRow({
+  code,
+  now,
+  copied,
+  algorithm,
+  selectionMode,
+  selected,
+  onToggleSelect,
+  onCopy,
+  onDelete,
+}: OtpRowProps) {
   const brand = matchBrand(code.issuer, code.label);
   const color = brand?.color ?? colorFromString(code.issuer !== "" ? `${code.issuer}||${code.label}` : code.label);
   const ink = brand?.ink ?? "#ffffff";
@@ -27,20 +40,33 @@ export function OtpRow({ code, now, copied, algorithm, onCopy, onDelete }: OtpRo
   const showBadge = (algorithm !== undefined && algorithm !== "SHA1") || code.period !== 30;
   const badgeText = `${algorithm ?? "SHA1"} · ${code.period}s`;
 
-  const handleKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
+  const activate = () => {
+    if (selectionMode) {
+      onToggleSelect(code.id);
+    } else {
       onCopy(code.current, code.id);
     }
   };
 
+  const handleKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      activate();
+    }
+  };
+
+  const classes = ["otp-row"];
+  if (copied && !selectionMode) classes.push("copied");
+  if (selected) classes.push("selected");
+
   return (
     <div
-      className={copied ? "otp-row copied" : "otp-row"}
+      className={classes.join(" ")}
       role="button"
       tabIndex={0}
-      title="Click to copy the current code"
-      onClick={() => onCopy(code.current, code.id)}
+      aria-pressed={selectionMode ? selected : undefined}
+      title={selectionMode ? "Toggle selection" : "Click to copy the current code"}
+      onClick={activate}
       onKeyDown={handleKey}
     >
       <div className="avatar avatar-sm" style={{ background: color, color: ink }} title={brand?.name}>
@@ -83,33 +109,48 @@ export function OtpRow({ code, now, copied, algorithm, onCopy, onDelete }: OtpRo
 
       {showBadge && <span className="algo-badge row-badge mono">{badgeText}</span>}
 
-      <button
-        type="button"
-        className="row-delete"
-        aria-label={`Delete ${code.label}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete(code.id, code.label);
-        }}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          width="13"
-          height="13"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
+      {selectionMode ? (
+        <span className="select-check" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 13l4 4L19 7" />
+          </svg>
+        </span>
+      ) : (
+        <button
+          type="button"
+          className="row-delete"
+          aria-label={`Delete ${code.label}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(code.id, code.label);
+          }}
         >
-          <path d="M3 6h18" />
-          <path d="M8 6V4h8v2" />
-          <path d="M19 6l-1 14H6L5 6" />
-        </svg>
-      </button>
+          <svg
+            viewBox="0 0 24 24"
+            width="13"
+            height="13"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 6h18" />
+            <path d="M8 6V4h8v2" />
+            <path d="M19 6l-1 14H6L5 6" />
+          </svg>
+        </button>
+      )}
 
-      {copied && (
+      {copied && !selectionMode && (
         <div className="copy-overlay" aria-hidden="true">
           <span className="copy-check">
             <svg

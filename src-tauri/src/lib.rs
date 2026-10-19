@@ -25,6 +25,8 @@ pub fn run() {
             commands::get_codes,
             commands::import_lines,
             commands::delete_account,
+            commands::delete_accounts,
+            commands::update_account,
             commands::copy_to_clipboard,
             commands::release_main_window
         ])

@@ -35,6 +35,8 @@ export default function App() {
   const [view, setView] = useState<ViewMode>(loadView);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [query, setQuery] = useState("");
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [now, setNow] = useState<number>(() => Date.now());
   const copyTimerRef = useRef<number | null>(null);
@@ -139,6 +141,53 @@ export default function App() {
     [],
   );
 
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode((active) => !active);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const unselectAll = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const deleteSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const ids = [...selectedIds];
+    // one entry keeps the labeled single confirm; many use the bulk confirm
+    if (ids.length === 1) {
+      const entry = codes.find((c) => c.id === ids[0]);
+      handleDelete(ids[0], entry ? entry.label : "");
+      return;
+    }
+    openDialog(`type=delete&ids=${ids.join(",")}`, {
+      title: "Delete accounts",
+      width: 380,
+      height: 190,
+    });
+  }, [selectedIds, codes, handleDelete]);
+
+  const editSelected = useCallback(() => {
+    if (selectedIds.size !== 1) return;
+    const entry = codes.find((c) => c.id === [...selectedIds][0]);
+    if (!entry) return;
+    openDialog(
+      `type=edit&id=${encodeURIComponent(entry.id)}&label=${encodeURIComponent(entry.label)}&issuer=${encodeURIComponent(entry.issuer)}`,
+      { title: "Edit account", width: 420, height: 260 },
+    );
+  }, [selectedIds, codes]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return codes;
@@ -146,6 +195,20 @@ export default function App() {
       (c) => c.label.toLowerCase().includes(q) || c.issuer.toLowerCase().includes(q),
     );
   }, [codes, query]);
+
+  // Drop selections for accounts that no longer exist (deleted elsewhere).
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const alive = new Set(codes.map((c) => c.id));
+      const next = new Set([...prev].filter((id) => alive.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [codes]);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(filtered.map((c) => c.id)));
+  }, [filtered]);
 
   return (
     <div className="app">
@@ -171,14 +234,39 @@ export default function App() {
         </div>
 
         <div className="header-actions">
-          <input
-            className="search-input"
-            type="text"
-            placeholder="Search…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search accounts"
-          />
+          <div className="search-wrap">
+            <input
+              className="search-input"
+              type="text"
+              placeholder="Search…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search accounts"
+            />
+            {query.length >= 1 && (
+              <button
+                type="button"
+                className="search-clear"
+                aria-label="Clear search"
+                title="Clear search"
+                onClick={() => setQuery("")}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="11"
+                  height="11"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 6l12 12" />
+                  <path d="M18 6L6 18" />
+                </svg>
+              </button>
+            )}
+          </div>
           <div className="view-toggle" role="group" aria-label="View mode">
             <button
               type="button"
@@ -275,8 +363,39 @@ export default function App() {
           <button type="button" className="btn" onClick={openImportDialog}>
             Import
           </button>
+          <button type="button" className="btn" onClick={toggleSelectionMode}>
+            {selectionMode ? "Done" : "Select"}
+          </button>
         </div>
       </header>
+
+      {selectionMode && (
+        <div className="app-actions">
+          <button type="button" className="btn" onClick={selectAll}>
+            Select all
+          </button>
+          <button type="button" className="btn" onClick={unselectAll}>
+            Unselect all
+          </button>
+          <button
+            type="button"
+            className="btn dialog-confirm-delete"
+            disabled={selectedIds.size === 0}
+            onClick={deleteSelected}
+          >
+            Delete
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={selectedIds.size !== 1}
+            onClick={editSelected}
+          >
+            Edit
+          </button>
+          <span className="actions-count">{selectedIds.size} selected</span>
+        </div>
+      )}
 
       <main className="app-main">
         {codes.length === 0 ? (
@@ -292,6 +411,9 @@ export default function App() {
                 now={now}
                 copied={copiedId === c.id}
                 algorithm={metaById[c.id]?.algorithm}
+                selectionMode={selectionMode}
+                selected={selectedIds.has(c.id)}
+                onToggleSelect={toggleSelect}
                 onCopy={copy}
                 onDelete={handleDelete}
               />
@@ -306,6 +428,9 @@ export default function App() {
                 now={now}
                 copied={copiedId === c.id}
                 algorithm={metaById[c.id]?.algorithm}
+                selectionMode={selectionMode}
+                selected={selectedIds.has(c.id)}
+                onToggleSelect={toggleSelect}
                 onCopy={copy}
                 onDelete={handleDelete}
               />

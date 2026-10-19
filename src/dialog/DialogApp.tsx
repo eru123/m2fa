@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { EditDialog } from "./EditDialog";
 import { ImportDialog } from "./ImportDialog";
 
 /** Routes the shared dialog child window by its query parameters. */
@@ -9,11 +10,33 @@ export default function DialogApp() {
 
   useEffect(() => {
     // WebView2 syncs document.title to the native window title.
-    document.title = type === "delete" ? "Delete account" : "Import accounts";
-  }, [type]);
+    document.title =
+      type === "edit"
+        ? "Edit account"
+        : type === "delete"
+          ? params.get("ids") !== null && params.get("ids") !== ""
+            ? "Delete accounts"
+            : "Delete account"
+          : "Import accounts";
+  }, [type, params]);
 
   if (type === "delete") {
-    return <ConfirmDialog id={params.get("id") ?? ""} label={params.get("label") ?? ""} />;
+    return (
+      <ConfirmDialog
+        id={params.get("id") ?? ""}
+        label={params.get("label") ?? ""}
+        ids={params.get("ids") ?? ""}
+      />
+    );
+  }
+  if (type === "edit") {
+    return (
+      <EditDialog
+        id={params.get("id") ?? ""}
+        label={params.get("label") ?? ""}
+        issuer={params.get("issuer") ?? ""}
+      />
+    );
   }
   return <ImportDialog />;
 }

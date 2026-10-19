@@ -145,6 +145,34 @@ pub fn delete_account(app: State<App>, id: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
+pub fn delete_accounts(app: State<App>, ids: Vec<String>) -> Result<u32, String> {
+    if ids.len() > 10_000 {
+        return Err("too many accounts in one request".into());
+    }
+    let conn = app.db.lock().map_err(|_| "database lock poisoned")?;
+    store::delete_accounts(&conn, &ids)
+}
+
+#[tauri::command]
+pub fn update_account(
+    app: State<App>,
+    id: String,
+    label: String,
+    issuer: String,
+) -> Result<bool, String> {
+    let label = label.trim();
+    let issuer = issuer.trim();
+    if label.is_empty() {
+        return Err("label must not be empty".into());
+    }
+    if label.len() > 256 || issuer.len() > 256 {
+        return Err("label or issuer is too long".into());
+    }
+    let conn = app.db.lock().map_err(|_| "database lock poisoned")?;
+    store::update_account(&conn, &id, label, issuer)
+}
+
+#[tauri::command]
 pub fn copy_to_clipboard(text: String) -> Result<(), String> {
     arboard::Clipboard::new()
         .and_then(|mut clip| clip.set_text(text))

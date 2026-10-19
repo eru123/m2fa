@@ -6,5 +6,8 @@ export const api = {
   getCodes: () => invoke<CodeSet[]>("get_codes"),
   importLines: (content: string) => invoke<ImportSummary>("import_lines", { content }),
   deleteAccount: (id: string) => invoke<boolean>("delete_account", { id }),
+  deleteAccounts: (ids: string[]) => invoke<number>("delete_accounts", { ids }),
+  updateAccount: (id: string, label: string, issuer: string) =>
+    invoke<boolean>("update_account", { id, label, issuer }),
   copyText: (text: string) => invoke<void>("copy_to_clipboard", { text }),
 };

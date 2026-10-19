@@ -6,18 +6,22 @@ import { closeDialog } from "./close";
 interface ConfirmDialogProps {
   id: string;
   label: string;
+  /** Comma-separated account ids for a bulk delete; single delete when empty. */
+  ids: string;
 }
 
-export function ConfirmDialog({ id, label }: ConfirmDialogProps) {
+export function ConfirmDialog({ id, label, ids }: ConfirmDialogProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const targets = ids !== "" ? ids.split(",") : id !== "" ? [id] : [];
+  const bulk = ids !== "";
 
   const confirmDelete = () => {
-    if (busy || id === "") return;
+    if (busy || targets.length === 0) return;
     setBusy(true);
     setError(null);
     api
-      .deleteAccount(id)
+      .deleteAccounts(targets)
       .then(() => emitTo("main", "accounts-changed"))
       .then(() => closeDialog())
       .catch(() => {
@@ -29,8 +33,17 @@ export function ConfirmDialog({ id, label }: ConfirmDialogProps) {
   return (
     <div className="dialog-page dialog-confirm">
       <div className="dialog-confirm-message">
-        Delete <span className="dialog-confirm-label">{label}</span> permanently? Its encrypted
-        secret will be removed from the vault.
+        {bulk ? (
+          <>
+            Delete <span className="dialog-confirm-label">{targets.length} accounts</span>{" "}
+            permanently? Their encrypted secrets will be removed from the vault.
+          </>
+        ) : (
+          <>
+            Delete <span className="dialog-confirm-label">{label}</span> permanently? Its encrypted
+            secret will be removed from the vault.
+          </>
+        )}
       </div>
       {error !== null && <div className="dialog-confirm-error">{error}</div>}
       <div className="dialog-actions">
