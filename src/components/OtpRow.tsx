@@ -1,5 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { CodeSet } from "../types";
+import { matchBrand } from "../brands";
 import { colorFromString, groupCode } from "../util";
 import { CodeRing } from "./CodeRing";
 
@@ -15,8 +16,12 @@ interface OtpRowProps {
 }
 
 export function OtpRow({ code, now, copied, algorithm, onCopy, onDelete }: OtpRowProps) {
-  const color = colorFromString(code.issuer !== "" ? `${code.issuer}||${code.label}` : code.label);
-  const initial = (code.issuer !== "" ? code.issuer : code.label).charAt(0).toUpperCase();
+  const brand = matchBrand(code.issuer, code.label);
+  const color = brand?.color ?? colorFromString(code.issuer !== "" ? `${code.issuer}||${code.label}` : code.label);
+  const ink = brand?.ink ?? "#ffffff";
+  const initial = (brand?.name ?? (code.issuer !== "" ? code.issuer : code.label))
+    .charAt(0)
+    .toUpperCase();
   const showBadge = (algorithm !== undefined && algorithm !== "SHA1") || code.period !== 30;
   const badgeText = `${algorithm ?? "SHA1"} · ${code.period}s`;
 
@@ -36,7 +41,7 @@ export function OtpRow({ code, now, copied, algorithm, onCopy, onDelete }: OtpRo
       onClick={() => onCopy(code.current, code.id)}
       onKeyDown={handleKey}
     >
-      <div className="avatar avatar-sm" style={{ background: color }}>
+      <div className="avatar avatar-sm" style={{ background: color, color: ink }} title={brand?.name}>
         {initial}
       </div>
 

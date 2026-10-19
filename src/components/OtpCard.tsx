@@ -1,5 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { CodeSet } from "../types";
+import { matchBrand } from "../brands";
 import { colorFromString, groupCode } from "../util";
 import { CodeRing } from "./CodeRing";
 
@@ -16,8 +17,10 @@ interface OtpCardProps {
 
 export function OtpCard({ code, now, copied, algorithm, onCopy, onDelete }: OtpCardProps) {
   const displayName = code.issuer !== "" ? code.issuer : code.label;
-  const color = colorFromString(code.issuer !== "" ? `${code.issuer}||${code.label}` : code.label);
-  const initial = displayName.charAt(0).toUpperCase();
+  const brand = matchBrand(code.issuer, code.label);
+  const color = brand?.color ?? colorFromString(code.issuer !== "" ? `${code.issuer}||${code.label}` : code.label);
+  const ink = brand?.ink ?? "#ffffff";
+  const initial = (brand?.name ?? displayName).charAt(0).toUpperCase();
   const showBadge = (algorithm !== undefined && algorithm !== "SHA1") || code.period !== 30;
   const badgeText = `${algorithm ?? "SHA1"} · ${code.period}s`;
 
@@ -64,7 +67,7 @@ export function OtpCard({ code, now, copied, algorithm, onCopy, onDelete }: OtpC
       </button>
 
       <div className="card-top">
-        <div className="avatar" style={{ background: color }}>
+        <div className="avatar" style={{ background: color, color: ink }} title={brand?.name}>
           {initial}
         </div>
         <div className="card-id">
