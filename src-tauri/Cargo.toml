@@ -24,7 +24,6 @@ serde_json = "1"
 rusqlite = { version = "0.37", features = ["bundled"] }
 aes-gcm = "0.10"
 rand = "0.9"
-keyring = { version = "3", features = ["windows-native"] }
 hmac = "0.12"
 sha1 = "0.10"
 sha2 = "0.10"
@@ -39,3 +38,11 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+# Platform vault backends: Windows Credential Manager / Linux Secret Service (D-Bus).
+# Kept target-scoped so the D-Bus stack never enters the Windows build.
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
