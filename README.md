@@ -34,12 +34,75 @@ The parser tolerates percent-encoded and raw spaces/colons in labels and a missi
 
 ```bash
 pnpm install
-pnpm tauri dev      # run the app
-pnpm tauri build    # produce installers
-cargo test          # RFC 4226/6238 vectors, vault roundtrip, parser cases (run in src-tauri)
+pnpm tauri dev      # run the app (hot reload via vite on :1420)
+cargo test          # run in src-tauri: RFC vectors, vault, parser, store
 ```
 
 Requirements: Node 20+, pnpm, Rust (MSVC toolchain on Windows), and the platform webview (WebView2 on Windows).
+
+## Building and publishing
+
+### Debug builds
+
+`pnpm tauri dev` is the everyday loop. If you need an *installable* debug build (symbols, overflow checks on, for reproducing issues):
+
+```bash
+pnpm tauri build --debug
+# installers land in src-tauri/target/debug/bundle/
+```
+
+Don't distribute debug builds — they are slower and larger.
+
+### Release builds (local)
+
+1. Bump the version in **both** `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` (keep them equal).
+2. Build:
+
+   ```bash
+   pnpm tauri build
+   ```
+
+3. Pick your artifacts from `src-tauri/target/release/`:
+
+   | Artifact | Path |
+   |---|---|
+   | NSIS installer | `bundle/nsis/2FA Manager_<version>_x64-setup.exe` |
+   | MSI installer | `bundle/msi/2FA Manager_<version>_x64_en-US.msi` |
+   | Portable binary | `m2fa.exe` |
+
+   The first run downloads WiX and NSIS automatically. Build only one format with `--bundles nsis` (or `msi`).
+4. Publish a GitHub release (repo is private — only collaborators can download):
+
+   ```bash
+   git tag v0.1.0 && git push origin v0.1.0        # preferred: CI builds and attaches
+   # or attach your local artifacts:
+   gh release create v0.1.0 "src-tauri/target/release/bundle/nsis/2FA Manager_0.1.0_x64-setup.exe" \
+       --title "v0.1.0" --generate-notes
+   ```
+
+### Publishing via CI
+
+- **`.github/workflows/release.yml`** — push a tag `v*` and GitHub Actions builds the Windows installers on a `windows-latest` runner and attaches them to a GitHub release. No secrets needed (it uses the built-in `GITHUB_TOKEN`).
+- **`.github/workflows/ci.yml`** — every push to `main` and every PR runs `cargo test` + `pnpm build`.
+
+### Code signing
+
+Installers are unsigned: Windows will show a SmartScreen/"unknown publisher" warning on first run. To remove it, sign with your code-signing certificate:
+
+```powershell
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a "bundle\nsis\2FA Manager_0.1.0_x64-setup.exe"
+```
+
+Tauri also supports `WINDOWS_CERTIFICATE_THUMBPRINT` secrets in CI for automated signing.
+
+### Icons
+
+The icon set is generated, not hand-drawn. To change it:
+
+```bash
+node scripts/gen-icon.mjs     # renders app-icon.png (1024px, transparent)
+pnpm tauri icon app-icon.png  # regenerates src-tauri/icons/*
+```
 
 ## Notes
 
