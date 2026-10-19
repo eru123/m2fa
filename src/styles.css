@@ -613,12 +613,16 @@ textarea {
   stroke: var(--border-2);
 }
 
-.ring-prog {
-  stroke: var(--ring);
+.ring-prog.ok {
+  stroke: var(--ok);
 }
 
-.ring-prog.urgent {
+.ring-prog.warn {
   stroke: var(--warn);
+}
+
+.ring-prog.danger {
+  stroke: var(--danger);
 }
 
 .ring-num {
@@ -627,8 +631,16 @@ textarea {
   font-weight: 600;
 }
 
-.ring-num.urgent {
+.ring-num.ok {
+  fill: var(--ok);
+}
+
+.ring-num.warn {
   fill: var(--warn);
+}
+
+.ring-num.danger {
+  fill: var(--danger);
 }
 
 /* ---------- list view ---------- */

@@ -14,10 +14,12 @@ export function CodeRing({ period, now, size = 32 }: CodeRingProps) {
   const total = period * 1000;
   const remaining = Math.max(0, total - (now % total));
   const fraction = remaining / total;
-  const urgent = remaining <= 5000;
   const offset = circumference * (1 - fraction);
   const seconds = Math.ceil(remaining / 1000);
   const c = size / 2;
+  // green while more than two thirds of the window remains (21-30s on a 30s
+  // period), orange in the middle third (11-20s), red in the last (0-10s)
+  const tier = fraction > 2 / 3 ? "ok" : fraction > 1 / 3 ? "warn" : "danger";
 
   return (
     <svg
@@ -30,7 +32,7 @@ export function CodeRing({ period, now, size = 32 }: CodeRingProps) {
     >
       <circle className="ring-track" cx={c} cy={c} r={r} fill="none" strokeWidth={stroke} />
       <circle
-        className={urgent ? "ring-prog urgent" : "ring-prog"}
+        className={`ring-prog ${tier}`}
         cx={c}
         cy={c}
         r={r}
@@ -42,7 +44,7 @@ export function CodeRing({ period, now, size = 32 }: CodeRingProps) {
         transform={`rotate(-90 ${c} ${c})`}
       />
       <text
-        className={urgent ? "ring-num urgent" : "ring-num"}
+        className={`ring-num ${tier}`}
         x={c}
         y={c}
         textAnchor="middle"
