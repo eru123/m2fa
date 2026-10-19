@@ -360,7 +360,7 @@ export default function App() {
               </svg>
             )}
           </button>
-          <button type="button" className="btn" onClick={openImportDialog}>
+          <button type="button" className="btn" onClick={openImportDialog} disabled={selectionMode}>
             Import
           </button>
           <button type="button" className="btn" onClick={toggleSelectionMode}>

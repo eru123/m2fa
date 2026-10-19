@@ -51,9 +51,16 @@ export async function openDialog(query: string, spec: DialogSpec): Promise<void>
   const main = getCurrentWindow();
   const existing = await WebviewWindow.getByLabel(DIALOG_LABEL);
   if (existing) {
-    existing.setFocus().catch(() => undefined);
-    guardMainWindow(main);
-    return;
+    // A leftover window that is not even visible is stale (crashed or
+    // half-closed) — destroy it and open a fresh one instead of just
+    // focusing an invisible window, which would look like a dead button.
+    const visible = await existing.isVisible().catch(() => false);
+    if (visible) {
+      existing.setFocus().catch(() => undefined);
+      guardMainWindow(main);
+      return;
+    }
+    await existing.destroy().catch(() => undefined);
   }
   const dialog = new WebviewWindow(DIALOG_LABEL, {
     url: `dialog.html?${query}`,
