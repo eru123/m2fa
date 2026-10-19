@@ -57,6 +57,7 @@ export function OtpRow({
 
   const classes = ["otp-row"];
   if (copied && !selectionMode) classes.push("copied");
+  if (selectionMode) classes.push("selectable");
   if (selected) classes.push("selected");
 
   return (

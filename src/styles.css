@@ -1049,7 +1049,7 @@ textarea {
 
 .select-check {
   position: absolute;
-  top: 3px;
+  bottom: 3px;
   right: 3px;
   z-index: 3;
   width: 18px;
@@ -1063,9 +1063,15 @@ textarea {
 }
 
 .otp-row .select-check {
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: 2px;
   right: 5px;
+}
+
+/* the algorithm badge lives at the bottom right too — hide it while
+   selecting so the checkbox never collides with it */
+.otp-card.selectable .algo-badge,
+.otp-row.selectable .algo-badge {
+  display: none;
 }
 
 .select-check svg {
