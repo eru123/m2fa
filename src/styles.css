@@ -1,7 +1,7 @@
 /* ================================================================
    2FA Manager — single stylesheet
    compact solid-color theme, CSS-variable dark/light, blue primary
-   radius .4rem panels / .2rem small controls, uniform control height
+   radius .2rem everywhere, uniform control height
    ================================================================ */
 
 /* ---------- theme tokens ---------- */
@@ -337,7 +337,7 @@ textarea {
   flex: 1;
   height: 100%;
   overflow-y: auto;
-  border-radius: .4rem;
+  border-radius: .2rem;
   padding: .375rem;
   background: var(--deep);
 }
@@ -654,7 +654,7 @@ textarea {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-2);
-  border-radius: .4rem;
+  border-radius: .2rem;
   background: var(--panel);
   overflow: hidden;
 }
@@ -783,64 +783,64 @@ textarea {
   margin-bottom: .375rem;
 }
 
-/* ---------- import modal ---------- */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: var(--scrim);
-  animation: overlayIn 200ms ease;
-}
-
-@keyframes overlayIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-.modal-card {
-  width: min(440px, 100%);
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
+/* ---------- dialog child windows ---------- */
+.dialog-page {
   display: flex;
   flex-direction: column;
   gap: .5rem;
-  padding: .75rem .75rem .625rem;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: .4rem;
-  animation: modalIn 250ms ease;
+  height: 100vh;
+  padding: .625rem .625rem .5rem .625rem;
+  background: var(--bg);
 }
 
-@keyframes modalIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.modal-title {
+.dialog-title {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
 }
 
-.modal-hint {
+.dialog-hint {
   margin: 0;
   font-size: 11.5px;
   color: var(--text-2);
+}
+
+.dialog-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.dialog-confirm {
+  justify-content: center;
+}
+
+.dialog-confirm-message {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.dialog-confirm-label {
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.dialog-confirm-error {
+  font-size: 11.5px;
+  color: var(--danger);
+}
+
+.dialog-confirm-delete {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.dialog-confirm-delete:hover:not(:disabled) {
+  background: var(--danger);
 }
 
 .file-drop {
@@ -886,10 +886,11 @@ textarea {
   text-overflow: ellipsis;
 }
 
-.modal-textarea {
+.dialog-textarea {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  min-height: 150px;
-  resize: vertical;
+  resize: none;
   padding: 6px 8px;
   border-radius: .2rem;
   border: 1px solid var(--border-2);
@@ -901,13 +902,13 @@ textarea {
   transition: border-color 150ms ease;
 }
 
-.modal-textarea:focus,
-.modal-textarea:focus-visible {
+.dialog-textarea:focus,
+.dialog-textarea:focus-visible {
   outline: none;
   border-color: var(--accent);
 }
 
-.modal-textarea::placeholder {
+.dialog-textarea::placeholder {
   color: var(--text-3);
 }
 
@@ -957,11 +958,10 @@ textarea {
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
 }
 
-.modal-actions {
+.dialog-actions {
   display: flex;
   justify-content: flex-end;
   gap: .375rem;
-  margin-top: 2px;
 }
 
 /* ---------- small screens ---------- */

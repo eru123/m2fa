@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill='%232563eb'%20d='M12%202l8%203v6c0%205-3.4%209.4-8%2011-4.6-1.6-8-6-8-11V5l8-3z'/%3E%3Cpath%20d='M9.6%2011.6v-1.4a2.4%202.4%200%200%201%204.8%200v1.4'%20fill='none'%20stroke='%23ffffff'%20stroke-width='1.5'%20stroke-linecap='round'/%3E%3Crect%20x='8.9'%20y='11.6'%20width='6.2'%20height='4.6'%20rx='1.1'%20fill='%23ffffff'/%3E%3C/svg%3E"
+    />
+    <title>2FA Manager</title>
+    <script>
+      // Apply the persisted theme before first paint to avoid a flash.
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem("m2fa.theme") === "light" ? "light" : "dark";
+      } catch (e) {
+        document.documentElement.dataset.theme = "dark";
+      }
+    </script>
+    <style>
+      html {
+        background-color: #0a0e14;
+      }
+
+      html[data-theme="light"] {
+        background-color: #eef1f6;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/dialog/main.tsx"></script>
+  </body>
+</html>

@@ -29,4 +29,14 @@ export default defineConfig(() => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+
+  // multi-page build: the main window and the dialog child window
+  build: {
+    rollupOptions: {
+      input: {
+        main: "index.html",
+        dialog: "dialog.html",
+      },
+    },
+  },
 }));

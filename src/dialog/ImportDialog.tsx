@@ -1,32 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
+import { emitTo } from "@tauri-apps/api/event";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { api } from "../api";
 import type { ImportSummary } from "../types";
 
-interface ImportModalProps {
-  onClose: () => void;
-  /** Called after an import reaches the backend, so the app can refresh codes. */
-  onImported: () => void;
-}
-
-export function ImportModal({ onClose, onImported }: ImportModalProps) {
+export function ImportDialog() {
   const [text, setText] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportSummary | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
+  const win = getCurrentWebviewWindow();
+  const close = () => win.close();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
       if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
     };
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const lineCount = useMemo(
     () => text.split("\n").filter((line) => line.trim().length > 0).length,
@@ -65,9 +64,9 @@ export function ImportModal({ onClose, onImported }: ImportModalProps) {
       .then((summary) => {
         setResult(summary);
         setBusy(false);
-        onImported();
+        emitTo("main", "accounts-changed").catch(() => undefined);
         if (summary.failed === 0) {
-          closeTimerRef.current = window.setTimeout(() => onClose(), 1600);
+          closeTimerRef.current = window.setTimeout(() => close(), 1600);
         }
       })
       .catch(() => {
@@ -77,17 +76,11 @@ export function ImportModal({ onClose, onImported }: ImportModalProps) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-card"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Import accounts"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="modal-title">Import accounts</h2>
-        <p className="modal-hint">One otpauth:// URI per line</p>
+    <div className="dialog-page">
+      <h2 className="dialog-title">Import accounts</h2>
+      <p className="dialog-hint">One otpauth:// URI per line</p>
 
+      <div className="dialog-body">
         <div
           className="file-drop"
           role="button"
@@ -98,8 +91,8 @@ export function ImportModal({ onClose, onImported }: ImportModalProps) {
           <svg
             className="file-icon"
             viewBox="0 0 24 24"
-            width="22"
-            height="22"
+            width="18"
+            height="18"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.8"
@@ -128,8 +121,7 @@ export function ImportModal({ onClose, onImported }: ImportModalProps) {
         </div>
 
         <textarea
-          className="modal-textarea"
-          rows={12}
+          className="dialog-textarea mono"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="otpauth://totp/Example:alice@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Example"
@@ -154,20 +146,20 @@ export function ImportModal({ onClose, onImported }: ImportModalProps) {
             )}
           </div>
         )}
+      </div>
 
-        <div className="modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={submitImport}
-            disabled={busy || lineCount === 0}
-          >
-            {busy ? "Importing…" : `Import ${lineCount} ${lineCount === 1 ? "line" : "lines"}`}
-          </button>
-        </div>
+      <div className="dialog-actions">
+        <button type="button" className="btn btn-ghost" onClick={close} disabled={busy}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={submitImport}
+          disabled={busy || lineCount === 0}
+        >
+          {busy ? "Importing…" : `Import ${lineCount} ${lineCount === 1 ? "line" : "lines"}`}
+        </button>
       </div>
     </div>
   );

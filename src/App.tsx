@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { api } from "./api";
 import type { AccountMeta, CodeSet } from "./types";
 import { EmptyState } from "./components/EmptyState";
-import { ImportModal } from "./components/ImportModal";
 import { OtpCard } from "./components/OtpCard";
 import { OtpRow } from "./components/OtpRow";
+import { openDialog } from "./dialog/open";
 
 type ViewMode = "card" | "list";
 type Theme = "dark" | "light";
@@ -34,7 +35,6 @@ export default function App() {
   const [view, setView] = useState<ViewMode>(loadView);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [query, setQuery] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [now, setNow] = useState<number>(() => Date.now());
   const copyTimerRef = useRef<number | null>(null);
@@ -67,6 +67,18 @@ export default function App() {
     const interval = window.setInterval(() => setNow(Date.now()), 100);
     return () => window.clearInterval(interval);
   }, []);
+
+  // Dialog child windows notify us when accounts changed.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen("accounts-changed", () => {
+      refreshCodes();
+      refreshMetas();
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => unlisten?.();
+  }, [refreshCodes, refreshMetas]);
 
   // Persist view mode.
   useEffect(() => {
@@ -103,24 +115,19 @@ export default function App() {
     copyTimerRef.current = window.setTimeout(() => setCopiedId(null), 1200);
   }, []);
 
+  const openImportDialog = useCallback(() => {
+    openDialog("type=import", { title: "Import accounts", width: 520, height: 560 });
+  }, []);
+
   const handleDelete = useCallback(
     (id: string, label: string) => {
-      if (!window.confirm(`Delete "${label}"?`)) return;
-      api
-        .deleteAccount(id)
-        .then(() => {
-          refreshCodes();
-          refreshMetas();
-        })
-        .catch(() => undefined);
+      openDialog(
+        `type=delete&id=${encodeURIComponent(id)}&label=${encodeURIComponent(label)}`,
+        { title: "Delete account", width: 380, height: 190 },
+      );
     },
-    [refreshCodes, refreshMetas],
+    [],
   );
-
-  const handleImported = useCallback(() => {
-    refreshCodes();
-    refreshMetas();
-  }, [refreshCodes, refreshMetas]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -255,7 +262,7 @@ export default function App() {
               </svg>
             )}
           </button>
-          <button type="button" className="btn" onClick={() => setModalOpen(true)}>
+          <button type="button" className="btn" onClick={openImportDialog}>
             Import
           </button>
         </div>
@@ -263,7 +270,7 @@ export default function App() {
 
       <main className="app-main">
         {codes.length === 0 ? (
-          <EmptyState onImport={() => setModalOpen(true)} />
+          <EmptyState onImport={openImportDialog} />
         ) : filtered.length === 0 ? (
           <div className="no-results">No accounts match your search.</div>
         ) : view === "card" ? (
@@ -296,8 +303,6 @@ export default function App() {
           </div>
         )}
       </main>
-
-      {modalOpen && <ImportModal onClose={() => setModalOpen(false)} onImported={handleImported} />}
     </div>
   );
 }
