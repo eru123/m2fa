@@ -1,6 +1,6 @@
 use crate::{otp, otpauth, state::App, store};
 use data_encoding::HEXLOWER;
-use rand::{rngs::OsRng, RngCore};
+use rand::RngCore;
 use sha2::{Digest, Sha256};
 use tauri::State;
 
@@ -114,8 +114,8 @@ pub fn import_lines(app: State<App>, content: String) -> Result<ImportSummary, S
                 }
                 let secret_enc = app.vault.seal(&input.secret)?;
                 let mut id_bytes = [0u8; 16];
-                OsRng.fill_bytes(&mut id_bytes);
-                let id = HEXLOWER.encode(id_bytes);
+                rand::rng().fill_bytes(&mut id_bytes);
+                let id = HEXLOWER.encode(&id_bytes);
                 store::insert_account(
                     &conn,
                     &id,

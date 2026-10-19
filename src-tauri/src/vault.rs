@@ -2,16 +2,12 @@ use aes_gcm::{
     aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
 };
-use rand::{rngs::OsRng, RngCore};
+use rand::RngCore;
 
 const KEYRING_SERVICE: &str = "m2fa";
 const KEYRING_USER: &str = "vault-master-key";
 const NONCE_LEN: usize = 12;
 const KEY_LEN: usize = 32;
-
-fn b64() -> &'static data_encoding::Encoding {
-    &data_encoding::BASE64
-}
 
 /// Secret-key vault. The AES-256 master key lives in the OS credential store
 /// (Windows Credential Manager / macOS Keychain / Secret Service) and is only
@@ -26,13 +22,13 @@ impl Vault {
         let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
             .map_err(|e| format!("keyring entry: {e}"))?;
         let key = match entry.get_password() {
-            Ok(stored) => b64()
+            Ok(stored) => data_encoding::BASE64
                 .decode(stored.as_bytes())
                 .map_err(|e| format!("stored vault key is not valid base64: {e}"))?,
             Err(keyring::Error::NoEntry) => {
                 let mut key = vec![0u8; KEY_LEN];
-                OsRng.fill_bytes(&mut key);
-                let encoded = b64().encode(&key);
+                rand::rng().fill_bytes(&mut key);
+                let encoded = data_encoding::BASE64.encode(&key);
                 entry
                     .set_password(&encoded)
                     .map_err(|e| format!("store vault key: {e}"))?;
@@ -50,7 +46,7 @@ impl Vault {
     /// Encrypt plaintext as `[12-byte nonce || ciphertext+tag]`.
     pub fn seal(&self, plaintext: &[u8]) -> Result<Vec<u8>, String> {
         let mut nonce_bytes = [0u8; NONCE_LEN];
-        OsRng.fill_bytes(&mut nonce_bytes);
+        rand::rng().fill_bytes(&mut nonce_bytes);
         let ciphertext = self
             .cipher
             .encrypt(Nonce::from_slice(&nonce_bytes), plaintext)
