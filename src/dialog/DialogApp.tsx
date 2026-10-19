@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EditDialog } from "./EditDialog";
 import { ImportDialog } from "./ImportDialog";
+import { NewDialog } from "./NewDialog";
 
 /** Routes the shared dialog child window by its query parameters. */
 export default function DialogApp() {
@@ -13,11 +14,13 @@ export default function DialogApp() {
     document.title =
       type === "edit"
         ? "Edit account"
-        : type === "delete"
-          ? params.get("ids") !== null && params.get("ids") !== ""
-            ? "Delete accounts"
-            : "Delete account"
-          : "Import accounts";
+        : type === "new"
+          ? "Add account"
+          : type === "delete"
+            ? params.get("ids") !== null && params.get("ids") !== ""
+              ? "Delete accounts"
+              : "Delete account"
+            : "Import accounts";
   }, [type, params]);
 
   if (type === "delete") {
@@ -37,6 +40,9 @@ export default function DialogApp() {
         issuer={params.get("issuer") ?? ""}
       />
     );
+  }
+  if (type === "new") {
+    return <NewDialog initialMode={(params.get("mode") as "manual" | "image" | "camera") ?? "manual"} />;
   }
   return <ImportDialog />;
 }

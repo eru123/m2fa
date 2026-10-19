@@ -37,6 +37,8 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
+  const [busyExport, setBusyExport] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [now, setNow] = useState<number>(() => Date.now());
   const copyTimerRef = useRef<number | null>(null);
@@ -131,6 +133,10 @@ export default function App() {
     openDialog("type=import", { title: "Import accounts", width: 520, height: 560 });
   }, []);
 
+  const openNewDialog = useCallback(() => {
+    openDialog("type=new", { title: "Add account", width: 460, height: 620 });
+  }, []);
+
   const handleDelete = useCallback(
     (id: string, label: string) => {
       openDialog(
@@ -187,6 +193,24 @@ export default function App() {
       { title: "Edit account", width: 420, height: 260 },
     );
   }, [selectedIds, codes]);
+
+  const exportSelected = useCallback(() => {
+    if (selectedIds.size === 0 || busyExport) return;
+    setBusyExport(true);
+    setExportMsg(null);
+    const count = selectedIds.size;
+    api
+      .exportAccounts([...selectedIds])
+      .then((path) => {
+        setExportMsg(`Exported ${count} to ${path}`);
+        window.setTimeout(() => setExportMsg(null), 6000);
+      })
+      .catch((e) => {
+        setExportMsg(`Export failed: ${String(e)}`);
+        window.setTimeout(() => setExportMsg(null), 6000);
+      })
+      .finally(() => setBusyExport(false));
+  }, [selectedIds, busyExport]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -360,6 +384,14 @@ export default function App() {
               </svg>
             )}
           </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={openNewDialog}
+            disabled={selectionMode}
+          >
+            New
+          </button>
           <button type="button" className="btn" onClick={openImportDialog} disabled={selectionMode}>
             Import
           </button>
@@ -393,6 +425,19 @@ export default function App() {
           >
             Edit
           </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={selectedIds.size === 0 || busyExport}
+            onClick={exportSelected}
+          >
+            {busyExport ? "Exporting…" : "Export"}
+          </button>
+          {exportMsg !== null && (
+            <span className="actions-msg" title={exportMsg}>
+              {exportMsg}
+            </span>
+          )}
           <span className="actions-count">{selectedIds.size} selected</span>
         </div>
       )}

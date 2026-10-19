@@ -192,3 +192,145 @@ pub fn release_main_window(app: tauri::AppHandle) -> Result<(), String> {
     }
     Ok(())
 }
+
+fn percent_encode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
+}
+
+/// Build one otpauth:// migration line from account data.
+fn build_otpauth_uri(
+    label: &str,
+    issuer: &str,
+    algorithm: crate::otp::Algo,
+    digits: u32,
+    period: u32,
+    secret_b32: &str,
+) -> String {
+    format!(
+        "otpauth://totp/{}?secret={}&issuer={}&algorithm={}&digits={}&period={}",
+        percent_encode(label),
+        secret_b32,
+        percent_encode(issuer),
+        algorithm.as_str(),
+        digits,
+        period
+    )
+}
+
+/// UTC timestamp as YYYYMMDD-HHMMSS for export filenames.
+fn timestamp_name() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let days = (secs / 86_400) as i64;
+    let rem = secs % 86_400;
+    let (h, m, s) = (rem / 3600, (rem % 3600) / 60, rem % 60);
+    // civil-from-days (Howard Hinnant)
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let mth = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if mth <= 2 { y + 1 } else { y };
+    format!("{y:04}{mth:02}{d:02}-{h:02}{m:02}{s:02}")
+}
+
+/// Export the selected accounts as otpauth:// lines to a file in the user's
+/// Downloads folder. Runs entirely in Rust — secrets are unsealed and
+/// written here and never cross into any webview. Returns the file path.
+#[tauri::command]
+pub fn export_accounts(
+    app: tauri::AppHandle,
+    state: State<App>,
+    ids: Vec<String>,
+) -> Result<String, String> {
+    use std::collections::HashSet;
+    use tauri::Manager;
+
+    if ids.is_empty() {
+        return Err("nothing selected to export".into());
+    }
+    if ids.len() > 10_000 {
+        return Err("too many accounts in one request".into());
+    }
+    let wanted: HashSet<&str> = ids.iter().map(|s| s.as_str()).collect();
+
+    let conn = state.db.lock().map_err(|_| "database lock poisoned")?;
+    let rows = store::list_accounts(&conn)?;
+    let mut lines = Vec::new();
+    for row in rows {
+        if !wanted.contains(row.id.as_str()) {
+            continue;
+        }
+        let secret = state
+            .vault
+            .unseal(&row.secret_enc, row.id.as_bytes())
+            .map_err(|e| format!("decrypt account for export: {e}"))?;
+        let secret_b32 = data_encoding::BASE32_NOPAD.encode(&secret);
+        lines.push(build_otpauth_uri(
+            &row.label,
+            &row.issuer,
+            row.algorithm,
+            row.digits,
+            row.period,
+            &secret_b32,
+        ));
+    }
+    if lines.is_empty() {
+        return Err("no matching accounts".into());
+    }
+
+    let dir = app
+        .path()
+        .download_dir()
+        .map_err(|e| format!("resolve downloads folder: {e}"))?;
+    let path = dir.join(format!("m2fa-export-{}.txt", timestamp_name()));
+    let body = format!("{}\n", lines.join("\r\n"));
+    std::fs::write(&path, body).map_err(|e| format!("write export file: {e}"))?;
+    Ok(path.display().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::otp::Algo;
+
+    #[test]
+    fn percent_encode_keeps_safe_chars() {
+        assert_eq!(percent_encode("Amazon Web Services"), "Amazon%20Web%20Services");
+        assert_eq!(percent_encode("a.b-c_d~e"), "a.b-c_d~e");
+        assert_eq!(percent_encode("ü@:"), "%C3%BC%40%3A");
+    }
+
+    #[test]
+    fn otpauth_uri_roundtrips_through_the_parser() {
+        let uri = build_otpauth_uri(
+            "root@998",
+            "Amazon Web Services",
+            Algo::Sha256,
+            8,
+            60,
+            "JBSWY3DPEHPK3PXP",
+        );
+        let parsed = crate::otpauth::parse_otpauth_uri(&uri).expect("parses");
+        assert_eq!(parsed.label, "root@998");
+        assert_eq!(parsed.issuer, "Amazon Web Services");
+        assert_eq!(parsed.algorithm, Algo::Sha256);
+        assert_eq!(parsed.digits, 8);
+        assert_eq!(parsed.period, 60);
+    }
+}

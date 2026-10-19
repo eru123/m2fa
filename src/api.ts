@@ -9,5 +9,6 @@ export const api = {
   deleteAccounts: (ids: string[]) => invoke<number>("delete_accounts", { ids }),
   updateAccount: (id: string, label: string, issuer: string) =>
     invoke<boolean>("update_account", { id, label, issuer }),
+  exportAccounts: (ids: string[]) => invoke<string>("export_accounts", { ids }),
   copyText: (text: string) => invoke<void>("copy_to_clipboard", { text }),
 };
