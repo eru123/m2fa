@@ -201,7 +201,7 @@ export default function App() {
     if (!entry) return;
     openDialog(
       `type=edit&id=${encodeURIComponent(entry.id)}&label=${encodeURIComponent(entry.label)}&issuer=${encodeURIComponent(entry.issuer)}`,
-      { title: "Edit account", width: 420, height: 260 },
+      { title: "Edit account", width: 420, height: 300 },
     );
   }, [selectedIds, codes]);
 
@@ -425,6 +425,7 @@ export default function App() {
             className="btn dialog-confirm-delete"
             disabled={selectedIds.size === 0}
             onClick={deleteSelected}
+            title={selectedIds.size === 0 ? "Select one or more entries to delete" : "Delete the selected entries"}
           >
             <TrashIcon /> Delete
           </button>
@@ -433,6 +434,7 @@ export default function App() {
             className="btn"
             disabled={selectedIds.size !== 1}
             onClick={editSelected}
+            title={selectedIds.size === 1 ? "Edit the selected entry" : "Select exactly one entry to edit"}
           >
             <PencilIcon /> Edit
           </button>
@@ -441,6 +443,7 @@ export default function App() {
             className="btn"
             disabled={selectedIds.size === 0 || busyExport}
             onClick={exportSelected}
+            title={selectedIds.size === 0 ? "Select one or more entries to export" : "Export the selected entries to Downloads"}
           >
             <UploadIcon /> {busyExport ? "Exporting…" : "Export"}
           </button>
