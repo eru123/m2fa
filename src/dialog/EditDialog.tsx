@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { emitTo } from "@tauri-apps/api/event";
 import { api } from "../api";
+import { CheckIcon, XIcon } from "../components/icons";
 import { closeDialog } from "./close";
 
 interface EditDialogProps {
@@ -72,10 +73,10 @@ export function EditDialog({ id, label: initialLabel, issuer: initialIssuer }: E
       </div>
       <div className="dialog-actions">
         <button type="button" className="btn btn-ghost" onClick={() => closeDialog()} disabled={busy}>
-          Cancel
+          <XIcon /> Cancel
         </button>
         <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>
-          {busy ? "Saving…" : "Save"}
+          <CheckIcon /> {busy ? "Saving…" : "Save"}
         </button>
       </div>
     </div>

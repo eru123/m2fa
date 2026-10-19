@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { emitTo } from "@tauri-apps/api/event";
 import { api } from "../api";
+import { TrashIcon, XIcon } from "../components/icons";
 import { closeDialog } from "./close";
 
 interface ConfirmDialogProps {
@@ -48,7 +49,7 @@ export function ConfirmDialog({ id, label, ids }: ConfirmDialogProps) {
       {error !== null && <div className="dialog-confirm-error">{error}</div>}
       <div className="dialog-actions">
         <button type="button" className="btn btn-ghost" onClick={() => closeDialog()} disabled={busy}>
-          Cancel
+          <XIcon /> Cancel
         </button>
         <button
           type="button"
@@ -56,7 +57,7 @@ export function ConfirmDialog({ id, label, ids }: ConfirmDialogProps) {
           onClick={confirmDelete}
           disabled={busy}
         >
-          {busy ? "Deleting…" : "Delete"}
+          <TrashIcon /> {busy ? "Deleting…" : "Delete"}
         </button>
       </div>
     </div>

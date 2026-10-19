@@ -1,3 +1,5 @@
+import { DownloadIcon } from "./icons";
+
 interface EmptyStateProps {
   onImport: () => void;
 }
@@ -21,7 +23,7 @@ export function EmptyState({ onImport }: EmptyStateProps) {
       <div className="empty-title">No accounts yet</div>
       <div className="empty-sub">Import a file with otpauth:// URIs to get started</div>
       <button type="button" className="btn btn-primary btn-lg" onClick={onImport}>
-        Import now
+        <DownloadIcon /> Import now
       </button>
     </div>
   );

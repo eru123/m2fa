@@ -5,6 +5,17 @@ import type { AccountMeta, CodeSet } from "./types";
 import { EmptyState } from "./components/EmptyState";
 import { OtpCard } from "./components/OtpCard";
 import { OtpRow } from "./components/OtpRow";
+import {
+  CheckIcon,
+  CheckSquareIcon,
+  DownloadIcon,
+  PencilIcon,
+  PlusIcon,
+  SquareIcon,
+  SquarePlusIcon,
+  TrashIcon,
+  UploadIcon,
+} from "./components/icons";
 import { openDialog, releaseMainWindow } from "./dialog/open";
 
 type ViewMode = "card" | "list";
@@ -390,13 +401,13 @@ export default function App() {
             onClick={openNewDialog}
             disabled={selectionMode}
           >
-            New
+            <PlusIcon /> New
           </button>
           <button type="button" className="btn" onClick={openImportDialog} disabled={selectionMode}>
-            Import
+            <DownloadIcon /> Import
           </button>
           <button type="button" className="btn" onClick={toggleSelectionMode}>
-            {selectionMode ? "Done" : "Select"}
+            {selectionMode ? <CheckIcon /> : <SquarePlusIcon />} {selectionMode ? "Done" : "Select"}
           </button>
         </div>
       </header>
@@ -404,10 +415,10 @@ export default function App() {
       {selectionMode && (
         <div className="app-actions">
           <button type="button" className="btn" onClick={selectAll}>
-            Select all
+            <CheckSquareIcon /> Select all
           </button>
           <button type="button" className="btn" onClick={unselectAll}>
-            Unselect all
+            <SquareIcon /> Unselect all
           </button>
           <button
             type="button"
@@ -415,7 +426,7 @@ export default function App() {
             disabled={selectedIds.size === 0}
             onClick={deleteSelected}
           >
-            Delete
+            <TrashIcon /> Delete
           </button>
           <button
             type="button"
@@ -423,7 +434,7 @@ export default function App() {
             disabled={selectedIds.size !== 1}
             onClick={editSelected}
           >
-            Edit
+            <PencilIcon /> Edit
           </button>
           <button
             type="button"
@@ -431,7 +442,7 @@ export default function App() {
             disabled={selectedIds.size === 0 || busyExport}
             onClick={exportSelected}
           >
-            {busyExport ? "Exporting…" : "Export"}
+            <UploadIcon /> {busyExport ? "Exporting…" : "Export"}
           </button>
           {exportMsg !== null && (
             <span className="actions-msg" title={exportMsg}>

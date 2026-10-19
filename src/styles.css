@@ -285,6 +285,10 @@ textarea {
 
 /* ---------- buttons ---------- */
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
   height: var(--control-h);
   border-radius: .2rem;
   font-weight: 600;

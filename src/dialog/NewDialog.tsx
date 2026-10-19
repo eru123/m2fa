@@ -4,6 +4,7 @@ import jsQR from "jsqr";
 import { emitTo } from "@tauri-apps/api/event";
 import { api } from "../api";
 import type { ImportSummary } from "../types";
+import { CameraIcon, ImageIcon, KeyboardIcon, PlusIcon, RefreshIcon, XIcon } from "../components/icons";
 import { closeDialog } from "./close";
 
 type Tab = "manual" | "image" | "camera";
@@ -196,11 +197,11 @@ export function NewDialog({ initialMode = "manual" }: NewDialogProps) {
       <div className="dialog-tabs" role="tablist">
         {(
           [
-            ["manual", "Manual"],
-            ["image", "QR image"],
-            ["camera", "Camera"],
-          ] as Array<[Tab, string]>
-        ).map(([id, name]) => (
+            ["manual", "Manual", KeyboardIcon],
+            ["image", "QR image", ImageIcon],
+            ["camera", "Camera", CameraIcon],
+          ] as Array<[Tab, string, typeof KeyboardIcon]>
+        ).map(([id, name, Icon]) => (
           <button
             key={id}
             type="button"
@@ -213,7 +214,7 @@ export function NewDialog({ initialMode = "manual" }: NewDialogProps) {
               setResult(null);
             }}
           >
-            {name}
+            <Icon /> {name}
           </button>
         ))}
       </div>
@@ -377,7 +378,7 @@ export function NewDialog({ initialMode = "manual" }: NewDialogProps) {
                 setResult(null);
               }}
             >
-              Scan again
+              <RefreshIcon /> Scan again
             </button>
           </div>
         )}
@@ -387,11 +388,11 @@ export function NewDialog({ initialMode = "manual" }: NewDialogProps) {
 
       <div className="dialog-actions">
         <button type="button" className="btn btn-ghost" onClick={() => closeDialog()} disabled={busy}>
-          Cancel
+          <XIcon /> Cancel
         </button>
         {tab === "manual" ? (
           <button type="button" className="btn btn-primary" onClick={submitManual} disabled={busy}>
-            {busy ? "Adding…" : "Add"}
+            <PlusIcon /> {busy ? "Adding…" : "Add"}
           </button>
         ) : (
           <button
@@ -400,7 +401,7 @@ export function NewDialog({ initialMode = "manual" }: NewDialogProps) {
             onClick={() => scanned !== null && submitUri(scanned)}
             disabled={busy || scanned === null}
           >
-            {busy ? "Adding…" : "Add"}
+            <PlusIcon /> {busy ? "Adding…" : "Add"}
           </button>
         )}
       </div>

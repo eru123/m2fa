@@ -3,6 +3,7 @@ import type { ChangeEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { emitTo } from "@tauri-apps/api/event";
 import { api } from "../api";
 import type { ImportSummary } from "../types";
+import { DownloadIcon, XIcon } from "../components/icons";
 import { closeDialog } from "./close";
 
 export function ImportDialog() {
@@ -151,7 +152,7 @@ export function ImportDialog() {
 
       <div className="dialog-actions">
         <button type="button" className="btn btn-ghost" onClick={close} disabled={busy}>
-          Cancel
+          <XIcon /> Cancel
         </button>
         <button
           type="button"
@@ -159,7 +160,7 @@ export function ImportDialog() {
           onClick={submitImport}
           disabled={busy || lineCount === 0}
         >
-          {busy ? "Importing…" : `Import ${lineCount} ${lineCount === 1 ? "line" : "lines"}`}
+          <DownloadIcon /> {busy ? "Importing…" : `Import ${lineCount} ${lineCount === 1 ? "line" : "lines"}`}
         </button>
       </div>
     </div>
