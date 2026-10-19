@@ -1,0 +1,11 @@
+# m2fa sample import file — dummy secrets, safe to import for testing.
+# One otpauth:// URI per line. Lines starting with # are skipped.
+otpauth://totp/Example:alice@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Example
+otpauth://totp/Heroku?secret=JBSWY3DPEHPK3PXR
+otpauth://totp/Amazon%20Web%20Services:root%40acct123?secret=JBSWY3DPEHPK3PXQ&issuer=Amazon%20Web%20Services
+otpauth://totp/Amazon Web Services:root@acct456?secret=JBSWY3DPEHPK3PXS&issuer=Amazon Web Services
+otpauth://totp/Zoho:bob@example.org?secret=JBSWY3DPEHPK3PXT&period=30&digits=6&algorithm=SHA1&issuer=Zoho
+otpauth://totp/Vault%20Backup?secret=JBSWY3DPEHPK3PXU&digits=8&period=60&algorithm=SHA256&issuer=Acme
+otpauth://totp/Username:lighty?secret=JBSWY3DPEHPK3PXV&issuer=Instagram
+# duplicate of the first line — should be reported as a duplicate, not imported twice:
+otpauth://totp/Example:alice@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Example
