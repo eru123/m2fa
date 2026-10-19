@@ -1,6 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { CodeSet } from "../types";
-import { groupCode, hueFromString } from "../util";
+import { colorFromString, groupCode } from "../util";
 import { CodeRing } from "./CodeRing";
 
 interface OtpCardProps {
@@ -16,7 +16,7 @@ interface OtpCardProps {
 
 export function OtpCard({ code, now, copied, algorithm, onCopy, onDelete }: OtpCardProps) {
   const displayName = code.issuer !== "" ? code.issuer : code.label;
-  const hue = hueFromString(code.issuer !== "" ? `${code.issuer}||${code.label}` : code.label);
+  const color = colorFromString(code.issuer !== "" ? `${code.issuer}||${code.label}` : code.label);
   const initial = displayName.charAt(0).toUpperCase();
   const showBadge = (algorithm !== undefined && algorithm !== "SHA1") || code.period !== 30;
   const badgeText = `${algorithm ?? "SHA1"} · ${code.period}s`;
@@ -64,7 +64,7 @@ export function OtpCard({ code, now, copied, algorithm, onCopy, onDelete }: OtpC
       </button>
 
       <div className="card-top">
-        <div className="avatar" style={{ background: `hsl(${hue}, 65%, 42%)` }}>
+        <div className="avatar" style={{ background: color }}>
           {initial}
         </div>
         <div className="card-id">
@@ -77,7 +77,7 @@ export function OtpCard({ code, now, copied, algorithm, onCopy, onDelete }: OtpC
             {code.label}
           </div>
         </div>
-        <CodeRing period={code.period} now={now} size={44} />
+        <CodeRing period={code.period} now={now} size={32} />
       </div>
 
       <div className="card-code">

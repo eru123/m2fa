@@ -1,18 +1,14 @@
-import { useId } from "react";
-
 interface CodeRingProps {
   /** TOTP period in seconds. */
   period: number;
   /** Current time in ms (ticked by the app) — remaining time is computed locally. */
   now: number;
-  /** Pixel size: 44 for cards, 36 for list rows. */
+  /** Pixel size: 32 for cards, 24 for list rows. */
   size?: number;
 }
 
-export function CodeRing({ period, now, size = 44 }: CodeRingProps) {
-  const gradId = `ring-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
-
-  const stroke = size >= 40 ? 3.5 : 3;
+export function CodeRing({ period, now, size = 32 }: CodeRingProps) {
+  const stroke = size >= 28 ? 3 : 2.5;
   const r = (size - stroke) / 2;
   const circumference = 2 * Math.PI * r;
   const total = period * 1000;
@@ -32,19 +28,13 @@ export function CodeRing({ period, now, size = 44 }: CodeRingProps) {
       role="img"
       aria-label={`${seconds} seconds remaining`}
     >
-      <defs>
-        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="100%" stopColor="#22d3ee" />
-        </linearGradient>
-      </defs>
-      <circle cx={c} cy={c} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
+      <circle cx={c} cy={c} r={r} fill="none" stroke="#2a3340" strokeWidth={stroke} />
       <circle
         cx={c}
         cy={c}
         r={r}
         fill="none"
-        stroke={urgent ? "#f59e0b" : `url(#${gradId})`}
+        stroke={urgent ? "#f59e0b" : "#6366f1"}
         strokeWidth={stroke}
         strokeLinecap="round"
         strokeDasharray={circumference}
@@ -57,8 +47,8 @@ export function CodeRing({ period, now, size = 44 }: CodeRingProps) {
         y={c}
         textAnchor="middle"
         dominantBaseline="central"
-        fill={urgent ? "#f59e0b" : "#e8ecf2"}
-        fontSize={size >= 40 ? 12 : 11}
+        fill={urgent ? "#f59e0b" : "#8b94a3"}
+        fontSize={size >= 28 ? 10 : 9}
       >
         {seconds}
       </text>

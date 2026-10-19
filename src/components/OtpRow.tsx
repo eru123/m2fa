@@ -1,6 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { CodeSet } from "../types";
-import { groupCode, hueFromString } from "../util";
+import { colorFromString, groupCode } from "../util";
 import { CodeRing } from "./CodeRing";
 
 interface OtpRowProps {
@@ -15,7 +15,7 @@ interface OtpRowProps {
 }
 
 export function OtpRow({ code, now, copied, algorithm, onCopy, onDelete }: OtpRowProps) {
-  const hue = hueFromString(code.issuer !== "" ? `${code.issuer}||${code.label}` : code.label);
+  const color = colorFromString(code.issuer !== "" ? `${code.issuer}||${code.label}` : code.label);
   const initial = (code.issuer !== "" ? code.issuer : code.label).charAt(0).toUpperCase();
   const showBadge = (algorithm !== undefined && algorithm !== "SHA1") || code.period !== 30;
   const badgeText = `${algorithm ?? "SHA1"} · ${code.period}s`;
@@ -36,7 +36,7 @@ export function OtpRow({ code, now, copied, algorithm, onCopy, onDelete }: OtpRo
       onClick={() => onCopy(code.current, code.id)}
       onKeyDown={handleKey}
     >
-      <div className="avatar avatar-sm" style={{ background: `hsl(${hue}, 65%, 42%)` }}>
+      <div className="avatar avatar-sm" style={{ background: color }}>
         {initial}
       </div>
 
@@ -60,7 +60,7 @@ export function OtpRow({ code, now, copied, algorithm, onCopy, onDelete }: OtpRo
         <span key={code.current} className="code-value code-value-sm mono">
           {groupCode(code.current)}
         </span>
-        <CodeRing period={code.period} now={now} size={36} />
+        <CodeRing period={code.period} now={now} size={24} />
       </div>
 
       <div className="row-next mono">
