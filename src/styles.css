@@ -35,6 +35,7 @@
   --scrollbar: #2a3340;
   --scrollbar-hov: #3a4049;
   --control-h: 26px;
+  --control-ink: #c3ccd9;
 }
 
 :root[data-theme="light"] {
@@ -66,6 +67,7 @@
   --focus: #2563eb;
   --scrollbar: #c3ccd9;
   --scrollbar-hov: #aab5c5;
+  --control-ink: #414d5c;
 }
 
 /* ---------- base ---------- */
@@ -251,7 +253,7 @@ textarea {
   width: 24px;
   height: calc(var(--control-h) - 6px);
   border-radius: .2rem;
-  color: var(--text-2);
+  color: var(--control-ink);
   transition: background 150ms ease, color 150ms ease;
 }
 
@@ -272,7 +274,7 @@ textarea {
   border-radius: .2rem;
   background: var(--raised);
   border: 1px solid var(--border-2);
-  color: var(--text-2);
+  color: var(--control-ink);
   transition: color 150ms ease, border-color 150ms ease;
 }
 
@@ -318,7 +320,7 @@ textarea {
 }
 
 .btn-ghost {
-  color: var(--text-2);
+  color: var(--control-ink);
   border-color: var(--border-2);
   background: var(--raised);
 }
@@ -1015,7 +1017,7 @@ textarea {
   width: 16px;
   height: 16px;
   border-radius: .2rem;
-  color: var(--text-3);
+  color: var(--control-ink);
 }
 
 .search-clear:hover {
