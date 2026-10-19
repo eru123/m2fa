@@ -150,3 +150,17 @@ pub fn copy_to_clipboard(text: String) -> Result<(), String> {
         .and_then(|mut clip| clip.set_text(text))
         .map_err(|e| format!("clipboard: {e}"))
 }
+
+/// Re-enable the main window from the dialog child window. Done in Rust so
+/// recovery never depends on the (disabled) main window's JS still running.
+#[tauri::command]
+pub fn release_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window("main") {
+        window
+            .set_enabled(true)
+            .map_err(|e| format!("enable main window: {e}"))?;
+        let _ = window.set_focus();
+    }
+    Ok(())
+}

@@ -65,7 +65,10 @@ export async function openDialog(query: string, spec: DialogSpec): Promise<void>
     maximizable: false,
     skipTaskbar: true,
     center: true,
-    parent: "main",
+    // no `parent`: on Windows an owned window is disabled together with its
+    // owner, so parenting would freeze this dialog when the main window is
+    // disabled for modality. The disabled main window cannot be activated,
+    // which keeps the dialog effectively on top anyway.
   });
   dialog.once("tauri://created", () => {
     guardMainWindow(main);
