@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AccountMeta, CodeSet, ImportSummary } from "./types";
+import type { AccountMeta, CodeSet, ExportResult, ImportSummary } from "./types";
 
 export const api = {
   listAccounts: () => invoke<AccountMeta[]>("list_accounts"),
@@ -9,6 +9,7 @@ export const api = {
   deleteAccounts: (ids: string[]) => invoke<number>("delete_accounts", { ids }),
   updateAccount: (id: string, label: string, issuer: string) =>
     invoke<boolean>("update_account", { id, label, issuer }),
-  exportAccounts: (ids: string[]) => invoke<string>("export_accounts", { ids }),
+  // An empty ids list asks the backend to export every account.
+  exportAccounts: (ids: string[]) => invoke<ExportResult>("export_accounts", { ids }),
   copyText: (text: string) => invoke<void>("copy_to_clipboard", { text }),
 };

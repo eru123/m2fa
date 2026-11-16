@@ -209,11 +209,10 @@ export default function App() {
     if (selectedIds.size === 0 || busyExport) return;
     setBusyExport(true);
     setExportMsg(null);
-    const count = selectedIds.size;
     api
       .exportAccounts([...selectedIds])
-      .then((path) => {
-        setExportMsg(`Exported ${count} to ${path}`);
+      .then((res) => {
+        setExportMsg(`Exported ${res.exported} to ${res.path}`);
         window.setTimeout(() => setExportMsg(null), 6000);
       })
       .catch((e) => {
@@ -222,6 +221,24 @@ export default function App() {
       })
       .finally(() => setBusyExport(false));
   }, [selectedIds, busyExport]);
+
+  // Full backup: an empty id list tells the backend to export every account.
+  const exportAll = useCallback(() => {
+    if (codes.length === 0 || busyExport) return;
+    setBusyExport(true);
+    setExportMsg(null);
+    api
+      .exportAccounts([])
+      .then((res) => {
+        setExportMsg(`Exported ${res.exported} to ${res.path}`);
+        window.setTimeout(() => setExportMsg(null), 6000);
+      })
+      .catch((e) => {
+        setExportMsg(`Export failed: ${String(e)}`);
+        window.setTimeout(() => setExportMsg(null), 6000);
+      })
+      .finally(() => setBusyExport(false));
+  }, [codes.length, busyExport]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -406,6 +423,24 @@ export default function App() {
           <button type="button" className="btn" onClick={openImportDialog} disabled={selectionMode}>
             <DownloadIcon /> Import
           </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={exportAll}
+            disabled={selectionMode || codes.length === 0 || busyExport}
+            title={
+              codes.length === 0
+                ? "No accounts to export yet"
+                : "Export every account to a .txt file in Downloads (re-importable)"
+            }
+          >
+            <UploadIcon /> {busyExport && !selectionMode ? "Exporting…" : "Export"}
+          </button>
+          {exportMsg !== null && !selectionMode && (
+            <span className="actions-msg" title={exportMsg}>
+              {exportMsg}
+            </span>
+          )}
           <button type="button" className="btn" onClick={toggleSelectionMode}>
             {selectionMode ? <CheckIcon /> : <SquarePlusIcon />} {selectionMode ? "Done" : "Select"}
           </button>

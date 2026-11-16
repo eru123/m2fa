@@ -34,6 +34,12 @@ pub struct ImportSummary {
     pub errors: Vec<String>,
 }
 
+#[derive(serde::Serialize)]
+pub struct ExportResult {
+    pub path: String,
+    pub exported: u32,
+}
+
 fn now_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -226,6 +232,25 @@ fn build_otpauth_uri(
     )
 }
 
+/// Header comment for export files. The import parser skips `#` lines, so
+/// this documents the format without making the file any less importable.
+const EXPORT_HEADER: &str =
+    "# m2fa export: one otpauth:// URI per line. Lines starting with # are skipped on import.";
+
+/// Assemble the export file body: the header comment followed by one
+/// otpauth:// URI per line — the exact shape `import_lines` accepts.
+fn export_body(uris: &[String]) -> String {
+    let size = uris.iter().map(|u| u.len() + 2).sum::<usize>() + EXPORT_HEADER.len() + 2;
+    let mut body = String::with_capacity(size);
+    body.push_str(EXPORT_HEADER);
+    body.push_str("\r\n");
+    for uri in uris {
+        body.push_str(uri);
+        body.push_str("\r\n");
+    }
+    body
+}
+
 /// UTC timestamp as YYYYMMDD-HHMMSS for export filenames.
 fn timestamp_name() -> String {
     let secs = std::time::SystemTime::now()
@@ -249,32 +274,39 @@ fn timestamp_name() -> String {
     format!("{y:04}{mth:02}{d:02}-{h:02}{m:02}{s:02}")
 }
 
-/// Export the selected accounts as otpauth:// lines to a file in the user's
-/// Downloads folder. Runs entirely in Rust — secrets are unsealed and
-/// written here and never cross into any webview. Returns the file path.
+/// Export accounts as otpauth:// lines to a file in the user's Downloads
+/// folder. An empty `ids` list exports every account (a full backup of the
+/// current data); a non-empty list exports just those accounts. Runs
+/// entirely in Rust — secrets are unsealed and written here and never cross
+/// into any webview. The file follows the import format exactly, so it can
+/// be re-imported as-is.
 #[tauri::command]
 pub fn export_accounts(
     app: tauri::AppHandle,
     state: State<App>,
     ids: Vec<String>,
-) -> Result<String, String> {
+) -> Result<ExportResult, String> {
     use std::collections::HashSet;
     use tauri::Manager;
 
-    if ids.is_empty() {
-        return Err("nothing selected to export".into());
-    }
     if ids.len() > 10_000 {
         return Err("too many accounts in one request".into());
     }
-    let wanted: HashSet<&str> = ids.iter().map(|s| s.as_str()).collect();
+    // Empty list means "export everything", so the filter is optional.
+    let wanted: Option<HashSet<&str>> = if ids.is_empty() {
+        None
+    } else {
+        Some(ids.iter().map(|s| s.as_str()).collect())
+    };
 
     let conn = state.db.lock().map_err(|_| "database lock poisoned")?;
     let rows = store::list_accounts(&conn)?;
     let mut lines = Vec::new();
     for row in rows {
-        if !wanted.contains(row.id.as_str()) {
-            continue;
+        if let Some(set) = &wanted {
+            if !set.contains(row.id.as_str()) {
+                continue;
+            }
         }
         let secret = state
             .vault
@@ -291,7 +323,11 @@ pub fn export_accounts(
         ));
     }
     if lines.is_empty() {
-        return Err("no matching accounts".into());
+        return Err(if wanted.is_some() {
+            "no matching accounts".into()
+        } else {
+            "no accounts to export".into()
+        });
     }
 
     let dir = app
@@ -299,9 +335,11 @@ pub fn export_accounts(
         .download_dir()
         .map_err(|e| format!("resolve downloads folder: {e}"))?;
     let path = dir.join(format!("m2fa-export-{}.txt", timestamp_name()));
-    let body = format!("{}\n", lines.join("\r\n"));
-    std::fs::write(&path, body).map_err(|e| format!("write export file: {e}"))?;
-    Ok(path.display().to_string())
+    std::fs::write(&path, export_body(&lines)).map_err(|e| format!("write export file: {e}"))?;
+    Ok(ExportResult {
+        path: path.display().to_string(),
+        exported: lines.len() as u32,
+    })
 }
 
 #[cfg(test)]
@@ -332,6 +370,36 @@ mod tests {
         assert_eq!(parsed.algorithm, Algo::Sha256);
         assert_eq!(parsed.digits, 8);
         assert_eq!(parsed.period, 60);
+    }
+
+    #[test]
+    fn export_file_body_reimports_line_by_line() {
+        let uris = vec![
+            build_otpauth_uri("alice", "Example", Algo::Sha1, 6, 30, "JBSWY3DPEHPK3PXP"),
+            build_otpauth_uri(
+                "root@998",
+                "Amazon Web Services",
+                Algo::Sha256,
+                8,
+                60,
+                "JBSWY3DPEHPK3PXR",
+            ),
+        ];
+        let body = export_body(&uris);
+        // CRLF must not leak into the lines the importer will parse.
+        assert!(body.ends_with("\r\n"));
+
+        let mut imported = 0;
+        for line in body.lines() {
+            if line.trim().is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let parsed = crate::otpauth::parse_otpauth_uri(line)
+                .unwrap_or_else(|e| panic!("export line does not re-import ({e}): {line}"));
+            assert!(!parsed.secret.is_empty());
+            imported += 1;
+        }
+        assert_eq!(imported, uris.len());
     }
 
     /// Demo dataset for screenshots: (issuer, label) pairs across known and

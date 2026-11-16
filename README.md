@@ -3,6 +3,7 @@
 A desktop TOTP authenticator built with Tauri 2, React 19, Vite 8, TypeScript and Rust.
 
 - Import accounts from a text file with one `otpauth://` URI per line (or paste them directly)
+- Export every account (or just the selected ones) to a `.txt` file in your Downloads folder using the exact same format — a full backup you can re-import as-is
 - Live codes with **previous**, **current** and **next** windows side by side
 - Card mode and list mode, search, and click-to-copy with animated feedback
 - Countdown ring per account, honouring each account's own period and algorithm
@@ -39,6 +40,8 @@ otpauth://totp/Acme:backup?secret=JBSWY3DPEHPK3PXU&digits=8&period=60&algorithm=
 ```
 
 The parser tolerates percent-encoded and raw spaces/colons in labels and a missing `issuer` parameter. See `fixtures/sample-import.txt` for a safe dummy file to test with.
+
+Files exported by the app use this exact format (plus a `#` header comment the importer skips), so an export can be dropped straight back into the import dialog.
 
 ## Development
 

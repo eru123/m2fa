@@ -25,3 +25,8 @@ export interface ImportSummary {
   failed: number;
   errors: string[];
 }
+
+export interface ExportResult {
+  path: string;
+  exported: number;
+}
