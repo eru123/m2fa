@@ -1,6 +1,6 @@
 [package]
 name = "m2fa"
-version = "0.1.0"
+version = "0.1.1"
 description = "2FA Manager - secure TOTP authenticator"
 authors = ["eru123"]
 edition = "2024"
